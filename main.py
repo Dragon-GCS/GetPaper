@@ -1,6 +1,7 @@
 from importlib import import_module
 from getpaper.gui import Application
 
-app = Application()
-app.run_it()
+if __name__ == '__main__':
+    app = Application("flatly")
+    app.run()
 

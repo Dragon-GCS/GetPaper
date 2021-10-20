@@ -1,6 +1,11 @@
 .venv/
 .vscode/
+.idea/
 **/__pycache__/
+
+*test*
+*demo*
+*.exe
 
 
 

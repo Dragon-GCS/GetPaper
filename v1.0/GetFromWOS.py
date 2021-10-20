@@ -1,29 +1,24 @@
+#!/usr/bin/env python3
 # Dragon's Code
 # encoding = utf-8
-# vision = Module
-# date = 20200823
-# 1.修改框架使其用于图形界面
-# 1.1 传入keyword，运行get_page_and_PMID()返回文献数量
-# 1.2 传入paper_number，运行“main”函数生成列表信息
-# 1.2 运行“run_it”带有交互作为程序使用
-# date = 20200909
-# 1.修改部分内容，与其他GetFrom模块统一
-
+# date = 20200911
+# 1.文章信息界面信息读取，除原文链接外全部完成
+# 2.搜索结果页面解析获取文章页面
+# 3.网页使用JS语法，或可以从搜索结果页直接获取除doi外所有信息
 
 import urllib.request as ur
+from http import cookiejar
 from math import ceil
 from re import sub
-from http import cookiejar
 from bs4 import BeautifulSoup
 
 
-class GetFromPubmed:
-
+class GetFromWOS:
     def __init__(self):
         self.keyword = ''
         self.paper_number = 0
         # 创建PMID、标题、作者、期刊、日期、摘要、网址、doi列表
-        self.pmid_addr = []
+        self.address = []
         self.title_list = []
         self.author_list = []
         self.publication_list = []
@@ -35,7 +30,7 @@ class GetFromPubmed:
         self.html = ''
 
         self.opener = opener_creat()
-        self.base_url = 'https://pubmed.ncbi.nlm.nih.gov/'
+        self.base_url = 'http://apps.webofknowledge.com'
         self.header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/80.0.3987.132 Safari/537.36'}
         # 文献搜索提示数量
@@ -51,43 +46,34 @@ class GetFromPubmed:
         keyword = sub(r'\W', '+', self.keyword)
         # 合成网址
         url = self.base_url + '?term=' + keyword + '&size=' + str(size) + '&page=' + str(page)
-        print(url)
-        self.html = self.open_html(url, 20)
+        self.html = self.open_html(url)
         bs = BeautifulSoup(self.html, 'lxml')
         # 获取找到的文献总数
-        paper_max_num = bs.find(attrs={'class': 'results-amount'}).span.string
+        paper_max_num = bs.find(id='trueFinalResultCount').string
         return paper_max_num
 
-    def get_pmid(self):
+    def get_address(self):
         bs = BeautifulSoup(self.html, 'lxml')
-        for pmid in bs.find_all(class_='docsum-pmid'):
-            self.pmid_addr.append(self.base_url + pmid.string)
-        if len(self.pmid_addr) > self.paper_number:
-            self.pmid_addr = self.pmid_addr[:self.paper_number]
-            print('获取PMID%s个' % len(self.pmid_addr))
+        for tag in bs.find_all(class_='search-results-content'):
+            self.address.append(self.base_url + tag.a['href'])
+        if len(self.address) > self.paper_number:
+            self.address = self.address[:self.paper_number]
+            print('获取网址信息%s个' % len(self.address))
 
     def get_content(self, pmid):
         try:
             bs = BeautifulSoup(self.open_html(pmid), 'lxml')
-            self.title_list.append(sub(r'\W\s+', '', bs.find(class_='heading-title').text))
-            self.author_list.append(bs.find(class_='authors-list').a.string)
-            self.publication_list.append(sub(r'\W\s+', '', bs.find(class_='journal-actions-trigger trigger').string))
-            self.date_list.append(bs.find(class_='cit').string)
-            try:
-                self.abstract_list.append(sub(r'\n|\W+\s+', '', bs.find(class_='abstract-content selected').text))
-            except Exception:
-                self.abstract_list.append('No Abstract')
-            try:
-                self.web_list.append(bs.find(class_='full-text-links-list').a['href'])
-            except Exception:
-                self.web_list.append(pmid)
-            try:
-                self.doi_list.append(sub(r'\W\s+', '', bs.find(attrs={'data-ga-action': 'DOI'}).string))
-            except Exception:
-                self.doi_list.append('No DOI')
+            self.title_list.append(bs.find(class_='title').text[1:-1])
+            self.author_list.append(sub(r'\n|\s+', '',
+                                        bs.find(title="Find more records by this author").parent.text[4:]))
+            self.publication_list.append(bs.find(class_='sourceTitle').text[1:-1])
+            self.date_list.append(bs.find(text='Published:').parent.parent.value.string)
+            self.abstract_list.append(bs.find(class_='title3').parent.p.text)
+            self.web_list.append(bs.find(id='oa_ac_tag_4').a['href'])
+            self.doi_list.append(bs.find(attrs={'name': 'doi'}).string)
         except Exception as e:
             print('错误原因：' + str(e))
-            print('错误文献：%s,第%d篇' % (self.pmid_addr[self.count - 1], self.count))
+            print('错误文献：%s,第%d篇' % (self.address[self.count - 1], self.count))
             self.title_list.append('Unconnected')
             self.author_list.append('Unconnected')
             self.publication_list.append('Unconnected')
@@ -99,15 +85,15 @@ class GetFromPubmed:
     def main(self, num):
         self.paper_number = int(num)
         # 确认PMID列表
-        self.get_pmid()
+        self.get_address()
         page = ceil(self.paper_number / 100)
         if page - 1:
             for i in range(2, page + 1):
                 self.get_paper_max_num(page=i)
-                self.get_pmid()
-        for pmid in self.pmid_addr:
+                self.get_address()
+        for pmid in self.address:
             self.count += 1
-            print('正在获取第%i篇,共计%s篇' % (self.count, len(self.pmid_addr)))
+            print('正在获取第%i篇,共计%s篇' % (self.count, len(self.address)))
             self.get_content(pmid)
         print('获取完成')
 
@@ -132,8 +118,3 @@ def opener_creat():
     https_handler = ur.HTTPSHandler()
     opener = ur.build_opener(cookie_handler, http_handler, https_handler)
     return opener
-
-
-if __name__ == '__main__':
-    getpaper = GetFromPubmed()
-    getpaper.run_it()

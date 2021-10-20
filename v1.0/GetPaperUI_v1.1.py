@@ -6,6 +6,8 @@
 # 20200826 完成美化及主要按钮与功能测试
 # 20200901 完成PubMed主要搜索功能与信息保存
 # 20200908 完成ACS搜索功能
+# vision = 1.1
+# 20201126 添加sci-hub网址选项
 
 
 import tkinter as tk
@@ -52,6 +54,10 @@ class Application:
         self.datebase = ttk.Combobox(self.root, value=['PubMed', 'ACS', 'DataBase3 is coming'], font=self.ft)
         self.datebase.grid(row=1, column=2, columnspan=5, sticky='w')
         self.datebase.current(0)
+        tk.Label(self.root,text='如需下载文献请在此输入所需的SciHub网址：https：//',font=self.ft).grid(row=1,column=5,sticky='e')
+        self.web = tk.Entry()
+        self.web.insert(0,'sci-hub.ren')
+        self.web.grid(row=1,column=6,sticky='w')
 
         # 第二行
         # 搜索提示
@@ -67,7 +73,7 @@ class Application:
 
         # 第三行
         tk.Label(self.root, text='共查找到：', font=self.ft).grid(row=3, column=1, sticky='e')
-        tk.Label(self.root, text='', font=self.ft).grid(row=3, column=2, sticky='ew')
+        tk.Label(self.root, text='', width=5, font=self.ft).grid(row=3, column=2, sticky='ew')
         tk.Label(self.root, text='篇文献', font=self.ft).grid(row=3, column=3, sticky='w')
         tk.Label(self.root, text='请输入需要获取的文献数量：', font=self.ft).grid(row=3, column=7, sticky='e')
         # 输入文献数量
@@ -118,7 +124,7 @@ class Application:
         elif self.datebase.get() == 'ACS':
             self.db = ACS.GetFromACS()
         self.db.keyword = self.keywd.get()
-        tk.Label(self.root, text=self.db.get_paper_max_num(), font=self.ft).grid(row=3, column=2, sticky='ew')
+        tk.Label(self.root, text=self.db.get_paper_max_num(), width=5, font=self.ft).grid(row=3, column=2, sticky='ew')
 
     def get_them(self):
         if self.datebase.get() == 'PubMed':
@@ -138,7 +144,7 @@ class Application:
                 win.insert('end', '正在获取第%i篇,共计%s篇\n' % (self.db.count, len(self.db.pmid_addr)))
                 win.update()
                 self.db.get_content(pmid)
-            win.insert('end', '获取完成，请关闭此窗口。')
+            win.insert('end', '获取完成')
             win.update()
         elif self.datebase.get() == 'ACS':
             self.db.main(self.num.get())
@@ -157,6 +163,8 @@ class Application:
 
     def download(self):
         d = tk.filedialog.askdirectory()
+        if d == '':
+            raise Exception('未指定文件夹')
         dic_name = '\\文献下载'
         if not exists(d + dic_name):
             mkdir(d + dic_name)
@@ -165,15 +173,16 @@ class Application:
         new = tk.Toplevel()
         win = tk.Text(new)
         win.pack()
-        win.insert('end', '正在使用sci-hub.tw下载原文.\n下载速度取决于网络质量，耗时较长\n可使用保存功能手动下载所需文献\n')
+        win.insert('end', '正在使用%s下载原文.\n下载速度取决于网络质量，耗时较长\n可使用保存功能手动下载所需文献\n' % self.web.get())
+        win.insert('end', '\n文件保存至%s' % d + dic_name)
         win.update()
 
         count = 1
         info = ''
         for doi in self.doi_list:
-            win.insert('end', '\n正在下载第%s篇\t' % count)
+            win.insert('end', '\n正在下载第%s篇' % count)
             win.update()
-            url = 'https://sci-hub.tw/' + doi
+            url = 'https://{}/{}'.format(self.web.get(),doi)
             try:
                 req = ur.Request(url, headers=self.db.header)
                 html = ur.urlopen(req, timeout=20).read()
@@ -182,17 +191,16 @@ class Application:
                 if 'https' not in pdf_link:
                     pdf_link = 'https:' + pdf_link
                 req = ur.Request(pdf_link, headers=self.db.header)
-                response = ur.urlopen(req, timeout=20)
+                response = ur.urlopen(req, timeout=20).read()
                 with open(str(count) + '.pdf', 'wb') as f:
-                    f.write(response.read())
-                info = '第%s篇下载完成' % count
+                    f.write(response)
+                info = '\n第%s篇下载完成' % count
             except Exception as e:
-                print(e)
-                info = 'No.%s paper Dowload failed, failed doi is "%s"' % (count, doi)
+                info = '\nNo.%s paper Dowload failed, failed url is "%s"' % (count, url)
             win.insert('end', info)
             win.update()
             count += 1
-        win.insert('end', '\n下载完成，请关闭此窗口。')
+        win.insert('end','\n下载完成，请关闭此窗口。')
         win.update()
 
     def file_save(self):
@@ -223,11 +231,11 @@ class Application:
             text = tk.Text(new, font=self.ft)
             content = 'Title:\n' + item_text[0] + '\n\nPublication\n' + item_text[2] + '\n' + item_text[3] + \
                       '\n\nDOI\n' + item_text[5] + '\n\nWeb_Address\n' + item_text[6] + '\n\nAbstract:\n' + item_text[4]
-            text.insert(index='insert', chars=content)
+            text.insert(index='insert', chars=content)  
             text.grid()
 
     def search_tip(self, event):
-        tk.Label(self.root, text='Searching', font=self.ft).grid(row=3, column=2, sticky='ew')
+        tk.Label(self.root, text='Searching', width=5, font=self.ft).grid(row=3, column=2, sticky='ew')
 
 
 if __name__ == '__main__':
