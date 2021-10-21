@@ -5,18 +5,18 @@ from getpaper.config import HEADER
 from typing import Dict
 import asyncio
 
-from getpaper.utils import AsyncFunc
+from getpaper.utils import AsyncFunc, getSession
+
 
 class ACSSpider(_Spider):
     base_url = 'https://pubs.acs.org/action/doSearch'
-    
-    def parseData(self, keyword:str, 
-                        start_year: str, 
-                        end_year:str, 
-                        author:str, 
-                        journal:str, 
-                        sorted:str,
-                        reverse:int) -> Dict:
+
+    def parseData(self, keyword: str,
+                  start_year: str,
+                  end_year: str,
+                  author: str,
+                  journal: str,
+                  sorting: str) -> Dict:
         data = {"AllField": keyword}
         return data
 
@@ -25,11 +25,11 @@ class ACSSpider(_Spider):
         """
         获取查找文献的总数
         """
-        async with self.getSession() as session:
+        async with getSession() as session:
             html = await self.getHtml(session, self.data)
         bs = BeautifulSoup(html, 'lxml')
-        total_num = bs.find("span",attrs={'class': 'result__count'}).string  #type:ignore
-        return total_num.replace(",", "")   #type:ignore
+        total_num = bs.find("span", attrs = {'class': 'result__count'}).string  # type:ignore
+        return total_num.replace(",", "")  # type:ignore
 
     @AsyncFunc
     async def getAllpapers(self, num: int):

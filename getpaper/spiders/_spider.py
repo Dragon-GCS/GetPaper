@@ -1,18 +1,17 @@
 from typing import Dict
 from aiohttp import ClientSession, CookieJar
-from abc import ABC, abstractclassmethod
-from getpaper.config import HEADER, TIMEOUT
-from datetime import datetime
+from abc import ABC, abstractmethod
+
 
 class _Spider(ABC):
     base_url: str
-    def __init__(self, keyword:str, 
-                    start_year:str = "1900", 
-                      end_year:str = str(datetime.now().year + 1), 
-                        author:str = None,
-                       journal:str = None,
-                        sorted:str = None,
-                       reverse:int = 0) -> None:
+
+    def __init__(self, keyword: str,
+                 start_year: str = None,
+                 end_year: str = None,
+                 author: str = None,
+                 journal: str = None,
+                 sorting: str = None) -> None:
         """
         Base spider
         Args:
@@ -21,40 +20,26 @@ class _Spider(ABC):
             end_year: default to next year
             author: filter by author, default to None
             journal: filter by published journal, default to None
-            sorted: sorted result by data or match 
+            sorting: sorting result by data or match
         """
-        self.data = self.parseData(keyword, start_year, end_year, author, journal, sorted, reverse)
+        self.data = self.parseData(keyword, start_year, end_year, author, journal, sorting)
 
-    def getSession(self) -> ClientSession:
-        """
-        Create a async Http session by aiohttp
-        """
-        return ClientSession(headers=HEADER,
-                             read_timeout=TIMEOUT,
-                             cookie_jar=CookieJar(unsafe=True))
-
-
-    async def getHtml(self, session:ClientSession, params:dict = {}) -> str:
+    async def getHtml(self, session: ClientSession, params: dict) -> str:
         """Async get html"""
-        response = await session.get(self.base_url, params=params)
-        print("URL:", response.url)
+        response = await session.get(self.base_url, params = params)
         return await response.text()
 
-
-    @abstractclassmethod
-    def parseData(self, keyword, start_year, end_year, author, journal, sorted, reverse) -> Dict:
+    @abstractmethod
+    def parseData(self, keyword, start_year, end_year, author, journal, sorting) -> Dict:
         """format data to search format"""
         return {}
 
-
-    @abstractclassmethod
+    @abstractmethod
     def getTotalPaperNum(self):
         """Get the total number of result"""
         pass
 
-    @abstractclassmethod
-    def getAllpapers(self, num:int):
+    @abstractmethod
+    def getAllpapers(self, num: int):
         """Fetch paper detail"""
         pass
-
-
