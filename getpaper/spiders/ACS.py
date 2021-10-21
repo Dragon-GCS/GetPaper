@@ -8,7 +8,7 @@ import asyncio
 from getpaper.utils import AsyncFunc, getSession
 
 
-class ACSSpider(_Spider):
+class Spider(_Spider):
     base_url = 'https://pubs.acs.org/action/doSearch'
 
     def parseData(self, keyword: str,

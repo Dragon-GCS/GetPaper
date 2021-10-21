@@ -9,7 +9,7 @@ from getpaper.utils import AsyncFunc, getSession
 import asyncio
 
 
-class PubMedSpider(_Spider):
+class Spider(_Spider):
     base_url = "https://pubmed.ncbi.nlm.nih.gov/"
 
     def parseData(self, keyword: str,
@@ -70,5 +70,5 @@ class PubMedSpider(_Spider):
 
 
 if __name__ == '__main__':
-    pubmed = PubMedSpider("dna human")
+    pubmed = Spider("dna human")
     print(pubmed.getAllpapers(5))

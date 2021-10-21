@@ -7,8 +7,29 @@
 * 使用ttk.bootstrap重新设计GUI，增加作者、期刊、日期、排序方式选项
 * 调整项目结构，增加爬虫接口，方便后期添加新的爬虫引擎
 * 使用多线程、进程和协程提高爬取效率同时解决搜索时的线程阻塞问题
-* 增加翻译功能接口，可自行添加不同的翻译源，自带百度翻译，需填写AppId、
+* 增加翻译功能接口，可自行添加不同的翻译源，自带百度翻译，需填写AppId
 
+项目结构
+```bash
+├─getpaper
+│  ├─GUI            # GUi模块
+│  ├─spiders        # 爬虫模块
+│  ├─translator     # 翻译模块
+│  ├─config.py      # 相关配置文件
+│  ├─download.py    # Sci-Hub下载模块
+│  └─utils.py       # 工具模块
+├─hook              # 用于pyinstaller打包，用于导入项目中动态导入的模块
+└─main.py           # 入口
+```
+### 爬虫引擎与翻译引擎接口
+在相应的模块内添加`name.py`文件，并在模块的`__init__.py`中的`__all__`中添加`<name>`
+
+* 爬虫
+  * 类名必须为`Spider`
+  * `getTotalnum()`根据查找信息获取搜索结果总数
+  * `getAllpapers(num: int)` 获取指定数量的文章详情
+* 翻译
+  * 类名必须为`Translator`
 ---
 
 

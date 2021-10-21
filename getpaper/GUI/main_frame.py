@@ -3,8 +3,11 @@ import time
 from threading import Thread
 import tkinter as tk
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
-from getpaper.utils import getSpider, getSpiderList
+
+from getpaper import spiders
+from getpaper.utils import getSpider
 from getpaper.config import SORTED_BY
+
 
 
 class TipFrame(Frame):
@@ -12,7 +15,7 @@ class TipFrame(Frame):
         super().__init__(master)
         self.grid(sticky = tk.EW)
         self.columnconfigure(1, weight = 1)
-        self.label = Label(self, width = 12, anchor = "e")
+        self.label = Label(self, width = 14, anchor = "e")
         self.label.grid(row = 0, column = 0, sticky = tk.E)
         self.bar = Progressbar(self, style = "info.Striped.Horizontal.TProgressbar")
 
@@ -42,7 +45,7 @@ class MainFrame(Frame):
         ###################### 第一行开始 ######################
         Label(self.row_1, text = '查询数据库：').grid(row = 0, column = 0, sticky = tk.E)
         # 选择数据库
-        self.engine = Combobox(self.row_1, values = getSpiderList(), state = "readonly")
+        self.engine = Combobox(self.row_1, values = spiders.__all__, state = "readonly")
         self.spider = None
         # 绑定方法，消除选择后的文字背景
         self.engine.bind('<<ComboboxSelected>>', lambda e: self.engine.selection_clear())

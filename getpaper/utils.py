@@ -1,25 +1,20 @@
 import asyncio
 import datetime
 from functools import wraps
-from typing import List, Optional
+from typing import Optional
 from importlib import import_module
-from getpaper.config import ROOT_DIR, HEADER, TIMEOUT
+from getpaper.config import HEADER, TIMEOUT
 from aiohttp import ClientSession, CookieJar
 
-
-def getSpiderList() -> List[str]:
-    """Spider.py which in getpaper/spiders will be find and show in GUI"""
-    return [spider.name.rstrip(".py") for spider in ROOT_DIR.glob("spiders/*.py") if not spider.name.startswith("_")] 
-
-
-def getSpider(name: str, *args, **kwargs) -> Optional:
+def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     """
     Return a instance of spider by name
     :param name: spider's name, spider's class name is {name}Spider
     :return spider: an instance of specified by name
     """
     try:
-        cls = getattr(import_module(f"getpaper.spiders.{name}"), f"{name}Spider")
+
+        cls = getattr(import_module(f"getpaper.spiders.{name}"), "Spider")
         spider = cls.__new__(cls)
         spider.__init__(*args, **kwargs)
         return spider
@@ -27,11 +22,7 @@ def getSpider(name: str, *args, **kwargs) -> Optional:
         print(f"Not found spider '{name}' in spdiers folder")
 
 
-def getTranslatorList() -> List[str]:
-    return [translator.name.rstrip(".py") for translator in ROOT_DIR.glob("translator/*.py") if not translator.name.startswith("_")]
-
-
-def getTranslator(name: str, *args, **kwargs) -> Optional:
+def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
     """
     Return a instance of translator by name
     :param name: translator's name, translator's class name is Translator

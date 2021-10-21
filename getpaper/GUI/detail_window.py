@@ -2,8 +2,10 @@ import tkinter as tk
 from tkinter.filedialog import asksaveasfilename, askdirectory
 from tkinter.ttk import Frame, Combobox, Button, Scrollbar
 
-from getpaper.utils import getTranslator, getTranslatorList
+from getpaper import translator
+from getpaper.utils import getTranslator
 from getpaper.config import FRAME_STYLE, FONT
+
 
 
 class DetailWindow(tk.Toplevel):
@@ -22,7 +24,7 @@ class DetailWindow(tk.Toplevel):
         Button(self.frame, text="下载", command=self.download).grid(row = 0)
         Button(self.frame, text="翻译", command=self.translate).grid(row = 0, column = 2, sticky=tk.E)
         # 选择翻译引擎
-        self.choose = Combobox(self.frame, values=getTranslatorList(), state="readonly")
+        self.choose = Combobox(self.frame, values=translator.__all__, state="readonly")
         self.choose.current(0)
         self.choose.grid(row = 0, column = 3, sticky=tk.W)
         self.choose.bind('<<ComboboxSelected>>', self.chooseTranslator)
