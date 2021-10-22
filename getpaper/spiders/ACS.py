@@ -1,7 +1,6 @@
-import time
+from queue import Queue
 from bs4 import BeautifulSoup
 from getpaper.spiders._spider import _Spider
-from getpaper.config import HEADER
 from typing import Dict
 import asyncio
 
@@ -25,14 +24,18 @@ class Spider(_Spider):
         """
         获取查找文献的总数
         """
-        async with getSession() as session:
-            html = await self.getHtml(session, self.data)
-        bs = BeautifulSoup(html, 'lxml')
-        total_num = bs.find("span", attrs = {'class': 'result__count'}).string  # type:ignore
-        return total_num.replace(",", "")  # type:ignore
+        try:
+            async with getSession() as session:
+                html = await self.getHtml(session, self.data)
+            bs = BeautifulSoup(html, 'lxml')
+            total_num = bs.find("span", attrs = {'class': 'result__count'}).string  # type:ignore
+            return f"共找到{total_num}篇"
+        except asyncio.exceptions.TimeoutError:
+            return "连接超时"
 
     @AsyncFunc
-    async def getAllpapers(self, num: int):
+    async def getAllpapers(self, result_queue:Queue):
+        num = result_queue.maxsize
         return super().getAllpapers(num)
 
 

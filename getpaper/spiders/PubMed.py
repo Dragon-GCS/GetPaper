@@ -1,8 +1,6 @@
-from asyncio import tasks
-from datetime import time
+from multiprocessing import Queue
 import re
 from bs4 import BeautifulSoup
-from multiprocessing.context import Process
 from typing import Dict
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, getSession
@@ -12,15 +10,12 @@ import asyncio
 class Spider(_Spider):
     base_url = "https://pubmed.ncbi.nlm.nih.gov/"
 
-    def parseData(self, keyword: str,
-                  start_year: str,
-                  end_year: str,
-                  author: str,
-                  journal: str,
-                  sorting: str) -> Dict:
+    def parseData(self, keyword: str, start_year: str, end_year: str, author: str, journal: str, sorting: str) -> Dict:
         data = {}
-        # 处理搜索关键字以及搜索时间范围
-        term = [f"{keyword}", f"{start_year}:{end_year}[dp]"]
+        term = [f"{keyword}"]
+        # 处理搜索时间范围
+        if start_year and end_year:
+            term.append(f"{start_year}:{end_year}[dp]")
         # 指定搜索作者
         if author:
             term.append(f"{author}[author]")
@@ -36,17 +31,17 @@ class Spider(_Spider):
 
     @AsyncFunc
     async def getTotalPaperNum(self):
-        """
-        获取查找文献的总数
-        """
-        async with getSession() as session:
-            html = await self.getHtml(session, self.data)
-        bs = BeautifulSoup(html, 'lxml')
+        """获取查找文献的总数"""
         try:
-            total_num = bs.find("div", attrs = {'class': 'results-amount'}).span.string  # type:ignore
+            async with getSession() as session:
+                html = await self.getHtml(session, self.data)
+            bs = BeautifulSoup(html, 'lxml')
+            total_num = bs.find("div", attrs = {'class': 'results-amount'}).span.string.replace(",", "")  # type:ignore
         except AttributeError:
             total_num = "0"
-        return total_num.replace(",", "")  # type:ignore
+        except asyncio.exceptions.TimeoutError:
+            return "连接超时"
+        return f"共找到{total_num}篇"
 
     async def getPagesInfo(self, page):
         self.data["page"] = str(page)
@@ -59,7 +54,7 @@ class Spider(_Spider):
         return html["page"]
 
     @AsyncFunc
-    async def getAllpapers(self, num: int):
+    async def getAllpapers(self, result_queue:Queue, num:int):
         self.data.update({"size"  : "200",
                           "format": "pubmed"})
         tasks = []
@@ -68,7 +63,14 @@ class Spider(_Spider):
             tasks.append(asyncio.create_task(self.getPagesInfo(page + 1)))
         return await asyncio.gather(*tasks)
 
+    def test(self, q, num):
+        import time
+        for i in range(num):
+            q.put(i)
+            print("in spider:", q.qsize())
+            time.sleep(1)
 
 if __name__ == '__main__':
+    q = Queue(5)
     pubmed = Spider("dna human")
-    print(pubmed.getAllpapers(5))
+    print(pubmed.getAllpapers(q, 5))

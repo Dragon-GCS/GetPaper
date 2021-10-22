@@ -1,10 +1,14 @@
 import asyncio
-import datetime
-from functools import wraps
-from typing import Optional
-from importlib import import_module
-from getpaper.config import HEADER, TIMEOUT
+
 from aiohttp import ClientSession, CookieJar
+from datetime import datetime
+from functools import wraps
+from importlib import import_module
+from threading import Thread
+from typing import Optional
+
+from getpaper.config import HEADER, TIMEOUT
+
 
 def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     """
@@ -18,8 +22,9 @@ def getSpider(name: str, *args, **kwargs) -> Optional[object]:
         spider = cls.__new__(cls)
         spider.__init__(*args, **kwargs)
         return spider
-    except ModuleNotFoundError:
-        print(f"Not found spider '{name}' in spdiers folder")
+    except ModuleNotFoundError as e:
+        print(f"Import spider '{name}' Error")
+        print(e)
 
 
 def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
@@ -33,12 +38,13 @@ def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
         translator = cls.__new__(cls)
         translator.__init__(*args, **kwargs)
         return translator
-    except ModuleNotFoundError:
-        print(f"Not found translator '{name}' in translator folder")
+    except ModuleNotFoundError as e:
+        print(f"Import translator '{name}' Error")
+        print(e)
 
 
 def getNowYear() -> str:
-    return str(datetime.datetime.now().year + 1)
+    return str(datetime.now().year + 1)
 
 
 def getSession() -> ClientSession:
@@ -56,4 +62,27 @@ def AsyncFunc(func):
     def wrapped(*args, **kwargs):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(func(*args, **kwargs))
+    return wrapped
+
+
+
+def startThread(func):
+    """
+    An wrapped for start a new thread about spider in MainFrame
+    """
+    @wraps(func)
+    def wrapped(self, *args, **kwargs) -> None:
+        if not self.engine.get():
+            self.tip.setTip("未选择搜索引擎")
+        else:
+            self.spider = getSpider(name = self.engine.get(),
+                                    keyword = self.keyword.get(),
+                                    start_year = self.start_year.get(),
+                                    end_year = self.end_year.get(),
+                                    author = self.author.get(),
+                                    journal = self.journal.get(),
+                                    sorting = self.sorting.get())
+            t = Thread(target = func, args=(self, *args), kwargs=kwargs)
+            t.setDaemon(True)
+            t.start()
     return wrapped

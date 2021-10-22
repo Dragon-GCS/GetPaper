@@ -1,11 +1,11 @@
 import time
 
-from threading import Thread
+from multiprocessing import Pool, Queue, Process
 import tkinter as tk
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
 from getpaper import spiders
-from getpaper.utils import getSpider
+from getpaper.utils import startThread
 from getpaper.config import SORTED_BY
 
 
@@ -15,11 +15,9 @@ class TipFrame(Frame):
         super().__init__(master)
         self.grid(sticky = tk.EW)
         self.columnconfigure(1, weight = 1)
-        self.label = Label(self, width = 14, anchor = "e")
+        self.label = Label(self, text = "进度",width = 16, anchor = "e")
         self.label.grid(row = 0, column = 0, sticky = tk.E)
         self.bar = Progressbar(self, style = "info.Striped.Horizontal.TProgressbar")
-
-    def showBar(self):
         self.bar.grid(row = 0, column = 1, sticky = tk.EW)
 
     def setTip(self, text):
@@ -85,52 +83,67 @@ class MainFrame(Frame):
         # 排序方式
         Label(self.row_3, text = "排序方式").grid(row = 0, column = 20, sticky = tk.E)
         self.sorting = Combobox(self.row_3, values = SORTED_BY, state = "readonly")
+        self.sorting.current(0)
         self.sorting.bind('<<ComboboxSelected>>', lambda e: self.sorting.selection_clear())
         self.sorting.grid(row = 0, column = 21, sticky = tk.W)
         ###################### 第三行结束 ######################
 
         ###################### 第四行开始 ######################
         # 搜索按钮
-        Button(self.row_4, text = "搜索", command = self.search, width = 10).grid(row = 0, column = 0)
+        self.search_button = Button(self.row_4, text = "关键词搜索", command = self.search, width = 10)
+        self.search_button.grid(row = 0, column = 0)
         self.tip = TipFrame(self.row_4)
         self.tip.grid(row = 0, column = 3, columnspan = 15)
         # 选择文献数量
-        Label(self.row_4, text = "请输入需要下载的文献数量：").grid(row = 0, column = 19, sticky = tk.E)
+        Label(self.row_4, text = "请输入需要获取的文献数量：").grid(row = 0, column = 19, sticky = tk.E)
         self.num = Entry(self.row_4)
         self.num.grid(row = 0, column = 20, sticky = tk.W)
         # 下载按钮
-        Button(self.row_4, text = "下载", command = self.download, width = 10).grid(row = 0, column = 21)
+        self.download_button = Button(self.row_4, text = "获取详情", command = self.download, width = 10)
+        self.download_button.grid(row = 0, column = 21)
         ###################### 第四行结束 ######################
 
+    @startThread
     def search(self):
-        self.spider = getSpider(name = self.engine.get(),
-                                keyword = self.keyword.get(),
-                                start_year = self.start_year.get(),
-                                end_year = self.end_year.get(),
-                                author = self.author.get(),
-                                journal = self.journal.get(),
-                                sorting = self.sorting.get())
-        print(self.spider.data)
-        def _():
-            self.tip.bar.start()
-            self.tip.setTip("搜索中")
-            self.tip.showBar()
-            time.sleep(3)
+        self.search_button.state(["disabled"])
+        self.tip.setTip("搜索中")
+        self.tip.bar.start()
+        try:
+            with Pool(1) as pool:
+                self.tip.setTip(pool.apply(self.spider.getTotalPaperNum))
+        except:
+            self.tip.setTip("未知错误")
+        finally:
             self.tip.bar.stop()
-            self.tip.setTip("搜索完成")
-            return
+            self.search_button.state(["!disabled"])
 
-        Thread(target = _).start()
 
+    @startThread
     def download(self):
-        def _():
-            self.tip.showBar()
-            a = 1
-            while a <= 100:
-                self.tip.setTip(f"下载中：{a}/100")
-                time.sleep(0.1)
-                self.tip.bar["value"] = a
-                a += 1
-            self.tip.setTip("下载完成")
-        Thread(target = _).start()
+        self.download_button.state(["disabled"])
+        num = self.num.get()
+        if not num:
+            self.tip.setTip("请输入文献数")
+        else:
+            try:
+                num = int(num)
+                if num < 1:
+                    raise ValueError
+                q = Queue(num)
+                p = Process(target=self.spider.test, args=(q, num))
+                p.daemon = True
+                p.start()
+                while not q.full():
+                    print(q.qsize())
+                    self.tip.setTip(f"下载中：{q.qsize()}/{num}")
+                    self.tip.bar["value"] = 100 * q.qsize()/num
+                    time.sleep(0.2)
+                self.tip.setTip("下载完成")
+            except ValueError:
+                self.tip.setTip("文献数错误")
+            except:
+                self.tip.setTip("未知错误")
+        self.tip.bar["value"] = 0
+        self.download_button.state(["!disabled"])
 
+    

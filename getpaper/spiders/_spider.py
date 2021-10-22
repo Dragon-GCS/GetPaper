@@ -1,5 +1,5 @@
 from typing import Dict
-from aiohttp import ClientSession, CookieJar
+from aiohttp import ClientSession
 from abc import ABC, abstractmethod
 
 
@@ -7,11 +7,11 @@ class _Spider(ABC):
     base_url: str
 
     def __init__(self, keyword: str,
-                 start_year: str = None,
-                 end_year: str = None,
-                 author: str = None,
-                 journal: str = None,
-                 sorting: str = None) -> None:
+                 start_year: str = "",
+                 end_year: str = "",
+                 author: str = "",
+                 journal: str = "",
+                 sorting: str = "") -> None:
         """
         Base spider
         Args:
@@ -27,10 +27,16 @@ class _Spider(ABC):
     async def getHtml(self, session: ClientSession, params: dict) -> str:
         """Async get html"""
         response = await session.get(self.base_url, params = params)
+        print(response.url)
         return await response.text()
 
     @abstractmethod
-    def parseData(self, keyword, start_year, end_year, author, journal, sorting) -> Dict:
+    def parseData(self, keyword: str,
+                  start_year: str,
+                  end_year: str,
+                  author: str,
+                  journal: str,
+                  sorting: str) -> Dict:
         """format data to search format"""
         return {}
 
