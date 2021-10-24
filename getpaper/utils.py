@@ -1,49 +1,38 @@
 import asyncio
-
-from aiohttp import ClientSession, CookieJar
 from datetime import datetime
 from functools import wraps
 from importlib import import_module
+from multiprocessing import Queue
 from threading import Thread
 from typing import Optional
+
+from aiohttp import ClientSession, CookieJar
 
 from getpaper.config import HEADER, TIMEOUT
 
 
 def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     """
-    Return a instance of spider by name
+    Create a Spider by name
     :param name: spider's name, spider's class name is {name}Spider
     :return spider: an instance of specified by name
     """
-    try:
-
-        cls = getattr(import_module(f"getpaper.spiders.{name}"), "Spider")
-        spider = cls.__new__(cls)
-        spider.__init__(*args, **kwargs)
-        return spider
-    except ModuleNotFoundError as e:
-        print(f"Import spider '{name}' Error")
-        print(e)
+    cls = import_module(f"getpaper.spiders.{name}").Spider
+    return cls(*args, **kwargs)
 
 
 def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
     """
-    Return a instance of translator by name
+    Create a Translator by name
     :param name: translator's name, translator's class name is Translator
     :return translator: an instance of specified by name
     """
-    try:
-        cls = getattr(import_module(f"getpaper.translator.{name}"), "Translator")
-        translator = cls.__new__(cls)
-        translator.__init__(*args, **kwargs)
-        return translator
-    except ModuleNotFoundError as e:
-        print(f"Import translator '{name}' Error")
-        print(e)
+    cls = import_module(f"getpaper.translator.{name}").Translator
+    return cls(*args, **kwargs)
 
 
 def getNowYear() -> str:
+    """Get the year of now"""
     return str(datetime.now().year + 1)
 
 
@@ -55,21 +44,19 @@ def getSession() -> ClientSession:
 
 
 def AsyncFunc(func):
-    """
-    An wrapped for run the async function as a common function
-    """
+    """A decorator for running the async function as a common function"""
+
     @wraps(func)
     def wrapped(*args, **kwargs):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(func(*args, **kwargs))
+
     return wrapped
 
 
-
 def startThread(func):
-    """
-    An wrapped for start a new thread about spider in MainFrame
-    """
+    """A decorator for running app function in new thread"""
+
     @wraps(func)
     def wrapped(self, *args, **kwargs) -> None:
         if not self.engine.get():
@@ -82,7 +69,23 @@ def startThread(func):
                                     author = self.author.get(),
                                     journal = self.journal.get(),
                                     sorting = self.sorting.get())
-            t = Thread(target = func, args=(self, *args), kwargs=kwargs)
-            t.setDaemon(True)
-            t.start()
+            Thread(target = func,
+                   args = (self, *args),
+                   kwargs = kwargs,
+                   daemon = True).start()
+
     return wrapped
+
+
+def getSortedData(queue: Queue):
+    """
+    Sort data in queue by item[0]
+    Args:
+        queue: result queue
+    Returns:
+        returns: list of sorted data in queue
+    """
+    result = []
+    while not queue.empty():
+        result.append(queue.get())
+    return sorted(result)

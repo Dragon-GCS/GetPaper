@@ -1,11 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter.filedialog import asksaveasfilename, askdirectory
+from tkinter.filedialog import askdirectory, asksaveasfilename
+
 from ttkbootstrap import Style
 
-from getpaper.config import APP_NAME, FRAME_STYLE, FONT
 from getpaper.GUI.main_frame import MainFrame
 from getpaper.GUI.result_frame import ResultFrame
+from getpaper.config import APP_NAME, FONT, FRAME_STYLE
 
 
 class Application(Style):
@@ -22,8 +23,8 @@ class Application(Style):
 
         style = ttk.Style()
         style.configure('TButton', font = FONT)
-        style.configure('Treeview', font = FONT[0])
-        style.configure('Treeview.Heading', font = FONT)
+        style.configure('Treeview', font = FONT)
+        style.configure('Heading', font = FONT)
 
         menu = tk.Menu(self.master)
         menu.add_command(label = '保存', command = self.saveToFile)

@@ -1,12 +1,14 @@
-from typing import Dict
-from aiohttp import ClientSession
 from abc import ABC, abstractmethod
+from multiprocessing import Queue
+from typing import Dict
+
+from aiohttp import ClientSession
 
 
 class _Spider(ABC):
     base_url: str
 
-    def __init__(self, keyword: str,
+    def __init__(self, keyword: str = "",
                  start_year: str = "",
                  end_year: str = "",
                  author: str = "",
@@ -27,7 +29,7 @@ class _Spider(ABC):
     async def getHtml(self, session: ClientSession, params: dict) -> str:
         """Async get html"""
         response = await session.get(self.base_url, params = params)
-        print(response.url)
+        print("Get url: ", response.url)
         return await response.text()
 
     @abstractmethod
@@ -42,10 +44,20 @@ class _Spider(ABC):
 
     @abstractmethod
     def getTotalPaperNum(self):
-        """Get the total number of result"""
-        pass
+        """
+        Get the total number of result
+        Returns:
+            num: number of search result
+        """
+        return
 
     @abstractmethod
-    def getAllpapers(self, num: int):
-        """Fetch paper detail"""
-        pass
+    def getAllPapers(self, queue: Queue, num: int):
+        """
+        Get all papers detail
+        Params:
+            queue: a process queue for storing result and feedbacking progess,
+                data format is [index, (title, authors, date, publication, abstract, doi, web)]
+            num: number of papers to get
+        """
+        return

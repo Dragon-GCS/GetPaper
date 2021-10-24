@@ -1,9 +1,21 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
-ROOT_DIR = Path(sys.executable
-                if hasattr(sys, "frozen")
-                else __file__).parent
+if hasattr(sys, "frozen"):
+    ROOT_DIR = Path(sys.executable).parent
+    # add new module name without .py when using pyinstall
+    spider_list = ["PubMed", "ACS"]
+    translator_list = ["百度翻译"]
+else:
+    ROOT_DIR = Path(__file__).parent
+    spider_list = \
+        [spider.name.rstrip(".py")
+         for spider in ROOT_DIR.joinpath("spiders").iterdir()
+         if not spider.name.startswith("_")]
+    translator_list = \
+        [translator.name.rstrip(".py")
+         for translator in ROOT_DIR.joinpath("translator").iterdir()
+         if not translator.name.startswith("_")]
 
 HEADER = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/80.0.3987.132 Safari/537.36'}

@@ -1,11 +1,4 @@
-from pathlib import Path
+from getpaper.config import spider_list, translator_list
 
-ROOT_DIR = Path(__file__).parent.parent.joinpath("getpaper")
-
-def getlist(dir):
-    names = [module.name.rstrip(".py") for module in ROOT_DIR.glob(dir + "/*.py") if not module.name.startswith("_")]
-    return [f"getpaper.{dir}.{name}" for name in names]
-spiders = getlist("spiders")
-translators = getlist("translator")
-
-hiddenimports = [*spiders, *translators]
+hiddenimports = [f"getpaper.spiders.{module}" for module in spider_list] + \
+                [f"getpaper.translator.{module}" for module in translator_list]

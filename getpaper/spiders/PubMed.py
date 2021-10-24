@@ -1,10 +1,12 @@
+import asyncio
+import time
 from multiprocessing import Queue
-import re
-from bs4 import BeautifulSoup
 from typing import Dict
+
+from bs4 import BeautifulSoup
+
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, getSession
-import asyncio
 
 
 class Spider(_Spider):
@@ -43,25 +45,28 @@ class Spider(_Spider):
             return "连接超时"
         return f"共找到{total_num}篇"
 
-    async def getPagesInfo(self, page):
-        self.data["page"] = str(page)
-        data = self.data.copy()
-        async with getSession() as session:
-            html = await self.getHtml(session, self.data.copy())
+    async def getPagesInfo(self, session, data):
+        html = await self.getHtml(session, data)
+        time.sleep(1)
+        self.result_queue.put((data["page"], list(data.values())))
         return self.parseHtml(data)
 
     def parseHtml(self, html):
         return html["page"]
 
     @AsyncFunc
-    async def getAllpapers(self, result_queue:Queue, num:int):
+    async def getAllPapers(self, result_queue: Queue, num: int):
         self.data.update({"size"  : "200",
                           "format": "pubmed"})
+        pages = num // 200 + 1
+        self.result_queue = result_queue
         tasks = []
-        for page in range(num):
-            self.data["page"] = str(page + 1)
-            tasks.append(asyncio.create_task(self.getPagesInfo(page + 1)))
-        return await asyncio.gather(*tasks)
+        async with getSession() as session:
+            for page in range(1, num + 1):
+                self.data["page"] = str(page)
+                tasks.append(self.getPagesInfo(session, self.data.copy()))
+            result = await asyncio.gather(*tasks)
+        return result
 
     def test(self, q, num):
         import time
@@ -70,7 +75,8 @@ class Spider(_Spider):
             print("in spider:", q.qsize())
             time.sleep(1)
 
+
 if __name__ == '__main__':
     q = Queue(5)
     pubmed = Spider("dna human")
-    print(pubmed.getAllpapers(q, 5))
+    print(pubmed.getAllPapers(q, 5))

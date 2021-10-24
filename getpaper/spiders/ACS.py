@@ -1,9 +1,10 @@
-from queue import Queue
-from bs4 import BeautifulSoup
-from getpaper.spiders._spider import _Spider
-from typing import Dict
 import asyncio
+from queue import Queue
+from typing import Dict
 
+from bs4 import BeautifulSoup
+
+from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, getSession
 
 
@@ -34,9 +35,9 @@ class Spider(_Spider):
             return "连接超时"
 
     @AsyncFunc
-    async def getAllpapers(self, result_queue:Queue):
+    async def getAllPapers(self, result_queue: Queue, num: int):
         num = result_queue.maxsize
-        return super().getAllpapers(num)
+        return super().getAllPapers(num)
 
 
 if __name__ == '__main__':
