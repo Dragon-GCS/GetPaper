@@ -1,10 +1,10 @@
 import time
 import tkinter as tk
-from multiprocessing import Pool, Process, Queue
+from queue import Queue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
 from getpaper.config import SORTED_BY, spider_list
-from getpaper.utils import getSortedData, startThread
+from getpaper.utils import getSortedData, startThread, MyThread
 
 
 class TipFrame(Frame):
@@ -107,8 +107,9 @@ class MainFrame(Frame):
         self.tip.setTip("搜索中")
         self.tip.bar.start()
         try:
-            with Pool(1) as pool:
-                self.tip.setTip(pool.apply(self.spider.getTotalPaperNum))
+            (t := MyThread(target=self.spider.getTotalPaperNum)).start()
+            t.join()
+            self.tip.setTip(t.result)
         except:
             self.tip.setTip("未知错误")
         finally:
@@ -125,9 +126,8 @@ class MainFrame(Frame):
                 raise ValueError
 
             result = Queue(num)
-            Process(target = self.spider.getAllPapers,
-                    args = (result, num),
-                    daemon = True).start()
+            MyThread(target = self.spider.getAllPapers,
+                args = (result, num)).start()
 
             while not result.full():
                 self.tip.setTip(f"下载中：{result.qsize()}/{num}")

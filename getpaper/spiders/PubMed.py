@@ -1,5 +1,4 @@
 import asyncio
-import time
 from multiprocessing import Queue
 from typing import Dict
 
@@ -47,36 +46,33 @@ class Spider(_Spider):
 
     async def getPagesInfo(self, session, data):
         html = await self.getHtml(session, data)
-        time.sleep(1)
-        self.result_queue.put((data["page"], list(data.values())))
-        return self.parseHtml(data)
+        current_page = data["page"]
 
-    def parseHtml(self, html):
-        return html["page"]
+        bs = BeautifulSoup(html, "lxml")
+        self.result_queue.put((current_page, list(data.values())))
+        with open("result", "w", encoding="utf-8") as f:
+            f.write(bs.prettify())
+
 
     @AsyncFunc
     async def getAllPapers(self, result_queue: Queue, num: int):
         self.data.update({"size"  : "200",
-                          "format": "pubmed"})
-        pages = num // 200 + 1
+                          "format": "abstract"})
+        pages = num // 200 
         self.result_queue = result_queue
         tasks = []
         async with getSession() as session:
-            for page in range(1, num + 1):
+            for page in range(1, pages + 1):
                 self.data["page"] = str(page)
                 tasks.append(self.getPagesInfo(session, self.data.copy()))
-            result = await asyncio.gather(*tasks)
-        return result
+            await asyncio.gather(*tasks)
 
-    def test(self, q, num):
-        import time
-        for i in range(num):
-            q.put(i)
-            print("in spider:", q.qsize())
-            time.sleep(1)
 
 
 if __name__ == '__main__':
     q = Queue(5)
-    pubmed = Spider("dna human")
-    print(pubmed.getAllPapers(q, 5))
+    pubmed = Spider(keyword = "crispr",
+                    start_year = "2010",
+                    end_year = "2020")
+    result = pubmed.getAllPapers(q, 5)
+    print(result)

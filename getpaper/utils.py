@@ -48,9 +48,11 @@ def AsyncFunc(func):
 
     @wraps(func)
     def wrapped(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(func(*args, **kwargs))
-
+        loop = asyncio.new_event_loop()
+        result = loop.run_until_complete(func(*args, **kwargs))
+        # run below code to aviod RunTimeError raised by aiohttp's bug
+        loop.run_until_complete(asyncio.sleep(0.1))
+        return result
     return wrapped
 
 
@@ -89,3 +91,14 @@ def getSortedData(queue: Queue):
     while not queue.empty():
         result.append(queue.get())
     return sorted(result)
+
+
+class MyThread(Thread):
+    def __init__(self, target, args=(), kwargs={}, daemon=True) -> None:
+        super().__init__(target=target, args=args, kwargs=kwargs, daemon=daemon)
+        self.func = target
+        self.args = args
+        self.kwargs = kwargs
+    
+    def run(self):
+        self.result = self.func(*self.args, **self.kwargs)
