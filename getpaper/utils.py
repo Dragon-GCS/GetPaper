@@ -63,27 +63,37 @@ def startThread(thread_name: str = None):
     def middle(func: Callable[..., Any]):
         @wraps(func)
         def wrapped(self, *args, **kwargs) -> None:
-            if not self.engine.get():
-                self.tip.setTip("未选择搜索引擎")
-                return
-            else:
-                self.spider = getSpider(name = self.engine.get(),
-                                        keyword = self.keyword.get(),
-                                        start_year = self.start_year.get(),
-                                        end_year = self.end_year.get(),
-                                        author = self.author.get(),
-                                        journal = self.journal.get(),
-                                        sorting = self.sorting.get())
-                MyThread(tip_set = self.tip.setTip,
-                         target = func,
-                         args = (self, *args),
-                         kwargs = kwargs,
-                         daemon = True,
-                         name = thread_name).start()
+            MyThread(tip_set = self.tip.setTip,
+                     target = func,
+                     args = (self, *args),
+                     kwargs = kwargs,
+                     daemon = True,
+                     name = thread_name).start()
 
         return wrapped
 
     return middle
+
+
+def checkSpider(func: Callable[..., Any]):
+    """A decorator for check whether choose spider"""
+
+    @wraps(func)
+    def wrapped(self, *args, **kwargs) -> None:
+        if not self.engine.get():
+            self.tip.setTip("未选择搜索引擎")
+            return
+        else:
+            self.spider = getSpider(name = self.engine.get(),
+                                    keyword = self.keyword.get(),
+                                    start_year = self.start_year.get(),
+                                    end_year = self.end_year.get(),
+                                    author = self.author.get(),
+                                    journal = self.journal.get(),
+                                    sorting = self.sorting.get())
+        func(self, *args, **kwargs)
+
+    return wrapped
 
 
 def getQueueData(queue: PriorityQueue):

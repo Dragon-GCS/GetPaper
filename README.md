@@ -32,6 +32,7 @@
   * `restul_queue`为一个`PriorityQueue`对象，用于保存结果，`restul_queue.qsize()`用于监控进度，爬虫中引发异常时应填满队列，否则在TIMEOUT前下载按钮将不可用。
 * 翻译
   * 类名必须为`Translator`
+  * 实现`translate(self, detail: str) -> str`，文章title和abstract会分别调用此方法进行翻译，返回的字符串会通过`str()`显示到文本框内。
 ---
 
 

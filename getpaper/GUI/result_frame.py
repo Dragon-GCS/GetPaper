@@ -3,6 +3,7 @@ from tkinter.ttk import Frame, Scrollbar, Treeview
 from typing import List
 
 from getpaper.GUI.detail_window import DetailWindow
+from getpaper.download import SciHubDownloader
 
 
 class ResultFrame(Frame):
@@ -34,14 +35,15 @@ class ResultFrame(Frame):
         """
         搜索结果输入到结果框中，data = [(index, (title, authors, date, publication, abstract, doi, web))]
         """
-        self.clearForm()
+        # remove previous result
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # insert results
         for i, item in data:
             self.tree.insert("", i, values = item)
 
-    def clearForm(self) -> None:
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
     def showItem(self) -> None:
         detail = self.tree.item(self.tree.selection()[0], "values")
-        DetailWindow(detail)
+        sci_url = self.master.children["!mainframe"].scihub_url.get()
+        downloader = SciHubDownloader(sci_url)
+        DetailWindow(detail, downloader)

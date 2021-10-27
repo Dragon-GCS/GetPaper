@@ -3,9 +3,9 @@
 .idea/
 **/__pycache__/
 
+**/_*.json
 *test*
 *demo*
+*result*
 *.exe
-
-
 

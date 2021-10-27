@@ -27,3 +27,7 @@ APP_NAME = "GetPaper"
 FRAME_STYLE = {"relief": "ridge", "padding": 10}
 FONT = ("微软雅黑", 12)
 SORTED_BY = ("相关性", "日期", "日期逆序")
+
+# For Detail_Frame to show result detail
+RESULT_LIST_EN = ["Title:\n", "Authors:\n", "Date:\t", "Publication:\t", "Abstract:\n", "doi:\t", "Url:\t"]
+RESULT_LIST_CN = ["标题:\n", "作者:\n", "日期:\t", "期刊:\t", "摘要:\n", "doi:\t", "网址:\t"]

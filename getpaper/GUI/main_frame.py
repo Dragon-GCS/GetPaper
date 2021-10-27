@@ -4,13 +4,13 @@ from queue import PriorityQueue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
 from getpaper.config import SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
-from getpaper.utils import MyThread, TipException, getQueueData, startThread
+from getpaper.download import SciHubDownloader
+from getpaper.utils import MyThread, TipException, checkSpider, getQueueData, startThread
 
 
 class TipFrame(Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.grid(sticky = tk.EW)
         self.columnconfigure(1, weight = 1)
         self.label = Label(self, text = "进度", width = 16, anchor = "e")
         self.label.grid(row = 0, column = 0, sticky = tk.E)
@@ -97,10 +97,11 @@ class MainFrame(Frame):
         self.num.insert(0, "0")
         self.num.grid(row = 0, column = 20, sticky = tk.W)
         # 下载按钮
-        self.download_button = Button(self.row_4, text = "获取详情", command = self.download, width = 10)
+        self.download_button = Button(self.row_4, text = "获取详情", command = self.getDetail, width = 10)
         self.download_button.grid(row = 0, column = 21)
         ###################### 第四行结束 ######################
 
+    @checkSpider
     @startThread("Search")
     def search(self):
         self.search_button.state(["disabled"])
@@ -112,8 +113,9 @@ class MainFrame(Frame):
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
-    @startThread("Download")
-    def download(self):
+    @checkSpider
+    @startThread("Download_Detail")
+    def getDetail(self):
         self.download_button.state(["disabled"])
 
         try:
@@ -146,9 +148,21 @@ class MainFrame(Frame):
                     self.tip.bar["value"] = 100 * cunrrent_size / num
                 time.sleep(TIP_REFRESH)
             self.tip.setTip("下载完成")
-
+            self.result = getQueueData(result)
             # get item from queue and send all to result frame
-            self.result_frame.createForm(getQueueData(result))
+            self.result_frame.createForm(self.result)
         finally:
             self.download_button.state(["!disabled"])
             self.tip.bar.stop()
+
+    @checkSpider
+    @startThread("Download_All")
+    def downloadAll(self, dir_name: str):
+        if not hasattr(self, "result"):
+            raise TipException("无搜索结果")
+        downloader = SciHubDownloader(self.scihub_url.get())
+
+    @startThread("Save_File")
+    def saveToFile(self, filename: str):
+        if not hasattr(self, "result"):
+            raise TipException("无搜索结果")

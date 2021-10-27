@@ -14,6 +14,7 @@ class Application(Style):
         super().__init__(theme)
         self.master.title(APP_NAME)
         self.master.minsize(960, 600)
+        self.master.geometry("1080x720")
         self.master.option_add("*Font", FONT)
         self.master.columnconfigure(0, weight = 1)  # 第一列随宽度变化
         self.master.rowconfigure(1, weight = 1)  # 第二行随高度变化
@@ -23,7 +24,7 @@ class Application(Style):
 
         style = ttk.Style()
         style.configure('TButton', font = FONT)
-        style.configure('Treeview', font = (FONT[0], 10))
+        style.configure('Treeview', font = ("times", 12))
         style.configure('Heading', font = FONT)
 
         menu = tk.Menu(self.master)
@@ -37,7 +38,9 @@ class Application(Style):
     def saveToFile(self):
         filename = asksaveasfilename(defaultextension = '.xslx', filetypes = [('xlsx', '.xlsx')])
         print("Save file to file:", filename)
+        self.main_frame.saveToFile(filename)
 
     def downloadAll(self):
         dir = askdirectory()
         print("DownLoad All to dictory", dir)
+        self.main_frame.downloadAll(dir)
