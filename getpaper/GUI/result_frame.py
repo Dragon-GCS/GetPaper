@@ -43,5 +43,5 @@ class ResultFrame(Frame):
             self.tree.delete(item)
 
     def showItem(self) -> None:
-        detail = self.tree.item(self.tree.selection(), "values")
+        detail = self.tree.item(self.tree.selection()[0], "values")
         DetailWindow(detail)

@@ -6,7 +6,7 @@
 
 * 使用ttk.bootstrap重新设计GUI，增加作者、期刊、日期、排序方式选项
 * 调整项目结构，增加爬虫接口，方便后期添加新的爬虫引擎
-* 使用多线程、进程和协程提高爬取效率同时解决搜索时的线程阻塞问题
+* 使用多线程和协程提高爬取效率同时解决搜索时的线程阻塞问题
 * 增加翻译功能接口，可自行添加不同的翻译源，自带百度翻译，需填写AppId
 
 项目结构
@@ -28,6 +28,8 @@
   * 类名必须为`Spider`
   * `getTotalnum()`根据查找信息获取搜索结果总数
   * `getAllpapers(num: int)` 获取指定数量的文章详情
+  * `utils`中的`TipException`用于捕获任务中的异常并在GUI上显示`tip`信息,不超过16个字符`raise TipException(tip)` 
+  * `restul_queue`为一个`PriorityQueue`对象，用于保存结果，`restul_queue.qsize()`用于监控进度，爬虫中引发异常时应填满队列，否则在TIMEOUT前下载按钮将不可用。
 * 翻译
   * 类名必须为`Translator`
 ---

@@ -21,6 +21,7 @@ HEADER = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
                         'Chrome/80.0.3987.132 Safari/537.36'}
 
 TIMEOUT = 15
+TIP_REFRESH = 0.2
 
 APP_NAME = "GetPaper"
 FRAME_STYLE = {"relief": "ridge", "padding": 10}

@@ -2,9 +2,9 @@ import asyncio
 from datetime import datetime
 from functools import wraps
 from importlib import import_module
-from multiprocessing import Queue
+from queue import PriorityQueue
 from threading import Thread
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from aiohttp import ClientSession, CookieJar
 
@@ -43,7 +43,7 @@ def getSession() -> ClientSession:
                          cookie_jar = CookieJar(unsafe = True))
 
 
-def AsyncFunc(func):
+def AsyncFunc(func: Callable[..., Any]):
     """A decorator for running the async function as a common function"""
 
     @wraps(func)
@@ -53,33 +53,40 @@ def AsyncFunc(func):
         # run below code to aviod RunTimeError raised by aiohttp's bug
         loop.run_until_complete(asyncio.sleep(0.1))
         return result
-    return wrapped
-
-
-def startThread(func):
-    """A decorator for running app function in new thread"""
-
-    @wraps(func)
-    def wrapped(self, *args, **kwargs) -> None:
-        if not self.engine.get():
-            self.tip.setTip("未选择搜索引擎")
-        else:
-            self.spider = getSpider(name = self.engine.get(),
-                                    keyword = self.keyword.get(),
-                                    start_year = self.start_year.get(),
-                                    end_year = self.end_year.get(),
-                                    author = self.author.get(),
-                                    journal = self.journal.get(),
-                                    sorting = self.sorting.get())
-            Thread(target = func,
-                   args = (self, *args),
-                   kwargs = kwargs,
-                   daemon = True).start()
 
     return wrapped
 
 
-def getSortedData(queue: Queue):
+def startThread(thread_name: str = None):
+    """A decorator for running app function in new thread, name for debug"""
+
+    def middle(func: Callable[..., Any]):
+        @wraps(func)
+        def wrapped(self, *args, **kwargs) -> None:
+            if not self.engine.get():
+                self.tip.setTip("未选择搜索引擎")
+                return
+            else:
+                self.spider = getSpider(name = self.engine.get(),
+                                        keyword = self.keyword.get(),
+                                        start_year = self.start_year.get(),
+                                        end_year = self.end_year.get(),
+                                        author = self.author.get(),
+                                        journal = self.journal.get(),
+                                        sorting = self.sorting.get())
+                MyThread(tip_set = self.tip.setTip,
+                         target = func,
+                         args = (self, *args),
+                         kwargs = kwargs,
+                         daemon = True,
+                         name = thread_name).start()
+
+        return wrapped
+
+    return middle
+
+
+def getQueueData(queue: PriorityQueue):
     """
     Sort data in queue by item[0]
     Args:
@@ -90,15 +97,29 @@ def getSortedData(queue: Queue):
     result = []
     while not queue.empty():
         result.append(queue.get())
-    return sorted(result)
+    return result
 
 
 class MyThread(Thread):
-    def __init__(self, target, args=(), kwargs={}, daemon=True) -> None:
-        super().__init__(target=target, args=args, kwargs=kwargs, daemon=daemon)
-        self.func = target
-        self.args = args
-        self.kwargs = kwargs
-    
+    def __init__(self, tip_set: Callable[..., Any], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.tip_set = tip_set
+
     def run(self):
-        self.result = self.func(*self.args, **self.kwargs)
+        """Overwrite self.run() for catching the TipException and show on Tipbar"""
+        try:
+            self.result = self._target(*self._args, **self._kwargs) \
+                if self._target else None
+        except TipException as t:
+            self.tip_set(t.tip)
+        except Exception as e:
+            print(f"Thread '{self.name}' exception:", e)
+            self.tip_set("未知错误")
+        finally:
+            del self._target, self._args, self._kwargs
+
+
+class TipException(Exception):
+    def __init__(self, tip, *args: object) -> None:
+        super().__init__(*args)
+        self.tip = tip

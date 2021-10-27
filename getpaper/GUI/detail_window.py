@@ -31,6 +31,7 @@ class DetailWindow(tk.Toplevel):
         ################# 文章详情 #################
         self.detail_frame = Frame(self, **FRAME_STYLE)
         self.detail_frame.columnconfigure(0, weight = 1)
+        self.detail_frame.columnconfigure(1, weight = 1)
         self.detail_frame.rowconfigure(0, weight = 1)
         self.detail_frame.grid(row = 1, sticky = tk.NSEW)
         self.text = tk.Text(self.detail_frame, font = FONT)
@@ -40,7 +41,12 @@ class DetailWindow(tk.Toplevel):
         # 添加垂直滚动条
         vbar = Scrollbar(self.detail_frame, orient = 'vertical', command = self.text.yview)
         self.text.configure(yscrollcommand = vbar.set)
-        vbar.grid(row = 0, column = 1, sticky = tk.NS)
+        vbar.grid(row = 0, column = 2, sticky = tk.NS)
+        ################# 翻译结果 #################
+        self.restul = tk.Text(self.detail_frame, font = FONT)
+        # https://tkdocs.com/shipman/text-index.html
+        self.restul.insert('insert', chars = "\n\n".join(detail))
+        self.restul.grid(row = 0, column = 1, sticky = tk.NSEW)
 
     def chooseTranslator(self, event):
         self.translator = getTranslator(self.choose.get())
@@ -55,6 +61,6 @@ class DetailWindow(tk.Toplevel):
 
     def translate(self):
         print("translate by :", self.translator)
-        self.text.delete('1.0', "insert")
-        self.text.insert("insert", "飞机都塞哥i哦萨芬v明年初卡西欧积分" * 5)
+        self.restul.delete('1.0', "insert")
+        self.restul.insert("insert", "飞机都塞哥i哦萨芬v明年初卡西欧积分" * 5)
         pass

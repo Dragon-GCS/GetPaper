@@ -23,12 +23,12 @@ class Application(Style):
 
         style = ttk.Style()
         style.configure('TButton', font = FONT)
-        style.configure('Treeview', font = FONT)
+        style.configure('Treeview', font = (FONT[0], 10))
         style.configure('Heading', font = FONT)
 
         menu = tk.Menu(self.master)
-        menu.add_command(label = '保存', command = self.saveToFile)
-        menu.add_command(label = '下载', command = self.downloadAll)
+        menu.add_command(label = '数据导出', command = self.saveToFile)
+        menu.add_command(label = '全部下载', command = self.downloadAll)
         self.master['menu'] = menu
 
     def run(self):

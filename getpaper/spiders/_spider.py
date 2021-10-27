@@ -1,8 +1,10 @@
+import asyncio
 from abc import ABC, abstractmethod
-from multiprocessing import Queue
+from queue import PriorityQueue
 from typing import Dict
 
 from aiohttp import ClientSession
+from getpaper.utils import TipException
 
 
 class _Spider(ABC):
@@ -28,9 +30,12 @@ class _Spider(ABC):
 
     async def getHtml(self, session: ClientSession, params: dict) -> str:
         """Async get html"""
-        response = await session.get(self.base_url, params = params)
-        print("Get url: ", response.url)
-        return await response.text()
+        try:
+            response = await session.get(self.base_url, params = params)
+            print("Get url: ", response.url)
+            return await response.text()
+        except asyncio.exceptions.TimeoutError:
+            raise TipException("连接超时")
 
     @abstractmethod
     def parseData(self, keyword: str,
@@ -52,7 +57,7 @@ class _Spider(ABC):
         return
 
     @abstractmethod
-    def getAllPapers(self, queue: Queue, num: int):
+    def getAllPapers(self, queue: PriorityQueue, num: int):
         """
         Get all papers detail
         Params:

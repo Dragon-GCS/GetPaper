@@ -1,11 +1,12 @@
-import asyncio
-from multiprocessing import Queue
+import re
+from asyncio import gather
+from queue import PriorityQueue
 from typing import Dict
 
 from bs4 import BeautifulSoup
 
 from getpaper.spiders._spider import _Spider
-from getpaper.utils import AsyncFunc, getSession
+from getpaper.utils import AsyncFunc, TipException, getSession
 
 
 class Spider(_Spider):
@@ -33,46 +34,105 @@ class Spider(_Spider):
     @AsyncFunc
     async def getTotalPaperNum(self):
         """获取查找文献的总数"""
-        try:
-            async with getSession() as session:
-                html = await self.getHtml(session, self.data)
-            bs = BeautifulSoup(html, 'lxml')
-            total_num = bs.find("div", attrs = {'class': 'results-amount'}).span.string.replace(",", "")  # type:ignore
-        except AttributeError:
-            total_num = "0"
-        except asyncio.exceptions.TimeoutError:
-            return "连接超时"
+        self.data["format"] = "summary"
+        async with getSession() as session:
+            html = await self.getHtml(session, self.data)
+        bs = BeautifulSoup(html, 'lxml')
+        if bs.find("span", class_ = "single-result-redirect-message"):
+            total_num = "1"
+        else:
+            total_num = tag.text.replace(",", "") \
+                if (tag := bs.find("div", class_ = 'results-amount').span) \
+                else "0"
         return f"共找到{total_num}篇"
 
-    async def getPagesInfo(self, session, data):
-        html = await self.getHtml(session, data)
-        current_page = data["page"]
+    async def getPMIDs(self, num: int):
+        """获取指定数量的文献的PMID列表"""
+        pmid_list = []
+        self.data.update({"size"  : "200",
+                          "page"  : 1,
+                          "format": "pmid"})
+        # 按顺序请求网页并抓取PMID
+        while self.data["page"] <= num // 200 + 1:
+            html = await self.getHtml(self.session, self.data.copy())
+            bs = BeautifulSoup(html, 'lxml')
+            if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
+                self.result_queue.maxsize = 1
+                self.result_queue.put((0, ["Not found"] * 7))
+                raise TipException("未找到相关文献")
+            result = tag.text.split()
+            pmid_list.extend(result)
 
-        bs = BeautifulSoup(html, "lxml")
-        self.result_queue.put((current_page, list(data.values())))
-        with open("result", "w", encoding="utf-8") as f:
-            f.write(bs.prettify())
+            if len(result) == 1:
+                break
 
+            self.data["page"] += 1
+        return pmid_list[:num]
+
+    async def getPagesInfo(self, index: int, pmid: str):
+        web = self.base_url + pmid
+        try:
+            html = await self.session.get(web)
+            bs = BeautifulSoup(await html.text(), "lxml")
+        except Exception as e:
+            print("PubMed Spider Error: ", e)
+            print("Error PIMD: ", pmid)
+            title, authors, date, publication, abstract, doi = ["Error"] * 6
+        else:
+            content = bs.find("main", class_ = "article-details")
+
+            title = re.sub(r"\s{2,}", "", tag.text) \
+                if (tag := content.find("h1", class_ = "heading-title")) \
+                else "No Title"
+
+            date = tag.text \
+                if (tag := content.find("span", class_ = 'cit')) \
+                else "No date"
+
+            publication = re.sub(r"\s+", "", tag.text) \
+                if (tag := content.find("button", id = 'full-view-journal-trigger')) \
+                else "No publication"
+
+            authors = "; ".join({author.a.text \
+                                 for author in content.find_all("span", class_ = "authors-list-item", limit = 5)
+                                 if author.find("a")})
+
+            abstract = re.sub(r"\s{2,}", "", tag.text) \
+                if (tag := content.find(class_ = "abstract-content selected")) \
+                else "No Abstract"
+
+            doi = re.sub(r"\s+", "", tag.text) \
+                if (tag := content.find("a", attrs = {'data-ga-action': 'DOI'})) \
+                else ""
+
+            if (tag := content.find(class_ = 'full-text-links-list')):
+                web = tag.a['href']
+        finally:
+            self.result_queue.put((index,
+                                   (title, authors, date, publication, abstract, doi, web)))
 
     @AsyncFunc
-    async def getAllPapers(self, result_queue: Queue, num: int):
-        self.data.update({"size"  : "200",
-                          "format": "abstract"})
-        pages = num // 200 
+    async def getAllPapers(self, result_queue: PriorityQueue, num: int):
         self.result_queue = result_queue
+        self.session = getSession()
         tasks = []
-        async with getSession() as session:
-            for page in range(1, pages + 1):
-                self.data["page"] = str(page)
-                tasks.append(self.getPagesInfo(session, self.data.copy()))
-            await asyncio.gather(*tasks)
-
+        for index, pmid in enumerate(await self.getPMIDs(num)):
+            tasks.append(self.getPagesInfo(index, pmid))
+        await gather(*tasks)
+        await self.session.close()
 
 
 if __name__ == '__main__':
-    q = Queue(5)
     pubmed = Spider(keyword = "crispr",
                     start_year = "2010",
-                    end_year = "2020")
-    result = pubmed.getAllPapers(q, 5)
-    print(result)
+                    end_year = "2020",
+                    author = "Martin",
+                    journal = "nature",
+                    sorting = "相关性"
+                    )
+
+    print(pubmed.getTotalPaperNum())
+    q = PriorityQueue(6)
+    result = pubmed.getAllPapers(q, 6)
+    for i in range(5):
+        print(q.get())

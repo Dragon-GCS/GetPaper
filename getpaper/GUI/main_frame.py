@@ -1,10 +1,10 @@
 import time
 import tkinter as tk
-from queue import Queue
+from queue import PriorityQueue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
-from getpaper.config import SORTED_BY, spider_list
-from getpaper.utils import getSortedData, startThread, MyThread
+from getpaper.config import SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
+from getpaper.utils import MyThread, TipException, getQueueData, startThread
 
 
 class TipFrame(Frame):
@@ -101,46 +101,54 @@ class MainFrame(Frame):
         self.download_button.grid(row = 0, column = 21)
         ###################### 第四行结束 ######################
 
-    @startThread
+    @startThread("Search")
     def search(self):
         self.search_button.state(["disabled"])
         self.tip.setTip("搜索中")
         self.tip.bar.start()
         try:
-            (t := MyThread(target=self.spider.getTotalPaperNum)).start()
-            t.join()
-            self.tip.setTip(t.result)
-        except:
-            self.tip.setTip("未知错误")
+            self.tip.setTip(self.spider.getTotalPaperNum())
         finally:
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
-    @startThread
+    @startThread("Download")
     def download(self):
         self.download_button.state(["disabled"])
 
         try:
             num = int(self.num.get())
             if num < 1:
-                raise ValueError
+                raise TipException("文献数不为正整数")
 
-            result = Queue(num)
-            MyThread(target = self.spider.getAllPapers,
-                args = (result, num)).start()
+            # create a Queue to store result
+            result = PriorityQueue(num)
+            # Start task on new thread 
+            # tip_set function for catching TipException show on GUI
+            MyThread(tip_set = self.tip.setTip,
+                     target = self.spider.getAllPapers,
+                     args = (result, num),
+                     name = "download_task").start()
 
-            while not result.full():
-                self.tip.setTip(f"下载中：{result.qsize()}/{num}")
-                self.tip.bar["value"] = 100 * result.qsize() / num
-                time.sleep(0.2)
-
+            # start progress bar
+            self.tip.setTip("准备中...")
+            start = time.time()
+            size = 0
+            while True:
+                cunrrent_size = result.qsize()
+                if cunrrent_size == size:
+                    if time.time() - start > TIMEOUT:
+                        raise TipException("连接超时")
+                elif result.full():
+                    break
+                else:
+                    self.tip.setTip(f"下载中：{cunrrent_size}/{num}")
+                    self.tip.bar["value"] = 100 * cunrrent_size / num
+                time.sleep(TIP_REFRESH)
             self.tip.setTip("下载完成")
-            self.result_frame.createForm(getSortedData(result))
-        except ValueError:
-            self.tip.setTip("文献数不为正整数")
-        except Exception as e:
-            print(e)
-            self.tip.setTip("未知下载错误")
 
-        self.tip.bar.stop()
-        self.download_button.state(["!disabled"])
+            # get item from queue and send all to result frame
+            self.result_frame.createForm(getQueueData(result))
+        finally:
+            self.download_button.state(["!disabled"])
+            self.tip.bar.stop()
