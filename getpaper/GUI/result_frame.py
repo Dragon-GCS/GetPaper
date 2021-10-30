@@ -1,13 +1,13 @@
 import tkinter as tk
 from tkinter.ttk import Frame, Scrollbar, Treeview
-from typing import List
+from typing import Sequence
 
 from getpaper.GUI.detail_window import DetailWindow
 from getpaper.download import SciHubDownloader
 
 
 class ResultFrame(Frame):
-    def __init__(self, master, **kwargs) -> None:
+    def __init__(self, master: tk.Widget, **kwargs) -> None:
         super().__init__(master, **kwargs)
         self.grid(row = 1, sticky = tk.NSEW)
         self.columnconfigure(0, weight = 1)
@@ -31,15 +31,15 @@ class ResultFrame(Frame):
         # 双击显示详细信息
         self.tree.bind('<Double-Button-1>', lambda e: self.showItem())
 
-    def createForm(self, data: List[List]) -> None:
+    def createForm(self, data: Sequence[Sequence[str]]) -> None:
         """
-        搜索结果输入到结果框中，data = [(index, (title, authors, date, publication, abstract, doi, web))]
+        搜索结果输入到结果框中，details = ((index, (title, authors, date, publication, abstract, doi, web)), ...)
         """
         # remove previous result
         for item in self.tree.get_children():
             self.tree.delete(item)
         # insert results
-        for i, item in data:
+        for i, item in enumerate(data):
             self.tree.insert("", i, values = item)
 
     def showItem(self) -> None:

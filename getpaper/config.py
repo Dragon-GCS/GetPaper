@@ -17,13 +17,15 @@ else:
          for translator in ROOT_DIR.joinpath("translator").iterdir()
          if not translator.name.startswith("_")]
 
+
 HEADER = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/80.0.3987.132 Safari/537.36'}
 
-TIMEOUT = 15
-TIP_REFRESH = 0.2
+TIMEOUT = 15  # Global AsyncClient timeout
+TIP_REFRESH = 0.2  # MainFrame's tip bar refresh frequency
 
 APP_NAME = "GetPaper"
+DEFAULT_SCI_HUB_URL = "sci-hub.ren"
 FRAME_STYLE = {"relief": "ridge", "padding": 10}
 FONT = ("微软雅黑", 12)
 SORTED_BY = ("相关性", "日期", "日期逆序")

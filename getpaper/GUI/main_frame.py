@@ -1,15 +1,15 @@
 import time
 import tkinter as tk
-from queue import PriorityQueue
+from queue import PriorityQueue, Queue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
-from getpaper.config import SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
+from getpaper.config import DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
 from getpaper.download import SciHubDownloader
 from getpaper.utils import MyThread, TipException, checkSpider, getQueueData, startThread
 
 
 class TipFrame(Frame):
-    def __init__(self, master):
+    def __init__(self, master: tk.Widget) -> None:
         super().__init__(master)
         self.columnconfigure(1, weight = 1)
         self.label = Label(self, text = "进度", width = 16, anchor = "e")
@@ -17,12 +17,12 @@ class TipFrame(Frame):
         self.bar = Progressbar(self, style = "info.Striped.Horizontal.TProgressbar")
         self.bar.grid(row = 0, column = 1, sticky = tk.EW)
 
-    def setTip(self, text):
+    def setTip(self, text: str) -> None:
         self.label["text"] = text
 
 
 class MainFrame(Frame):
-    def __init__(self, master: Frame, result_frame: Frame, **kwargs):
+    def __init__(self, master: tk.Widget, result_frame: tk.Widget, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row = 0, sticky = tk.EW)
         self.result_frame = result_frame
@@ -48,7 +48,7 @@ class MainFrame(Frame):
         # Sci-Hub网址
         Label(self.row_1, text = "如需下载文献请在此输入可用的SciHub网址：https：//").grid(row = 0, column = 20, sticky = 'e')
         self.scihub_url = Entry(self.row_1)
-        self.scihub_url.insert(0, "sci-hub.ren")
+        self.scihub_url.insert(0, DEFAULT_SCI_HUB_URL)
         self.scihub_url.grid(row = 0, column = 21, sticky = tk.W)
         ###################### 第一行结束 ######################
 
@@ -103,7 +103,9 @@ class MainFrame(Frame):
 
     @checkSpider
     @startThread("Search")
-    def search(self):
+    def search(self) -> None:
+        """Get the number of terms"""
+
         self.search_button.state(["disabled"])
         self.tip.setTip("搜索中")
         self.tip.bar.start()
@@ -115,7 +117,11 @@ class MainFrame(Frame):
 
     @checkSpider
     @startThread("Download_Detail")
-    def getDetail(self):
+    def getDetail(self) -> None:
+        """
+        Download paper details, include:
+        Title, Authors, Date, Publication, Abstract, doi, Url
+        """
         self.download_button.state(["disabled"])
 
         try:
@@ -132,37 +138,55 @@ class MainFrame(Frame):
                      args = (result, num),
                      name = "download_task").start()
 
-            # start progress bar
-            self.tip.setTip("准备中...")
-            start = time.time()
-            size = 0
-            while True:
-                cunrrent_size = result.qsize()
-                if cunrrent_size == size:
-                    if time.time() - start > TIMEOUT:
-                        raise TipException("连接超时")
-                elif result.full():
-                    break
-                else:
-                    self.tip.setTip(f"下载中：{cunrrent_size}/{num}")
-                    self.tip.bar["value"] = 100 * cunrrent_size / num
-                time.sleep(TIP_REFRESH)
-            self.tip.setTip("下载完成")
+            self.monitor(result, num)
+
             self.result = getQueueData(result)
             # get item from queue and send all to result frame
             self.result_frame.createForm(self.result)
         finally:
             self.download_button.state(["!disabled"])
             self.tip.bar.stop()
+            self.tip.setTip("获取结束")
 
-    @checkSpider
     @startThread("Download_All")
-    def downloadAll(self, dir_name: str):
+    def downloadAll(self, dir_name: str) -> None:
         if not hasattr(self, "result"):
-            raise TipException("无搜索结果")
-        downloader = SciHubDownloader(self.scihub_url.get())
+            raise TipException("请先点击获取详情")
+        self.tip.setTip("准备下载中...")
+
+        try:
+            # create a queue for monitor progress of download
+            monitor = Queue(len(self.result))
+            downloader = SciHubDownloader(self.scihub_url.get())
+            MyThread(tip_set = self.tip.setTip,
+                     target = downloader.multiDownload,
+                     args = (self.result, monitor, dir_name),
+                     name = "multidownload_task")
+
+            self.monitor(monitor, len(self.result))
+
+        finally:
+            self.tip.bar.stop()
+            self.tip.setTip("下载结束")
 
     @startThread("Save_File")
-    def saveToFile(self, filename: str):
+    def saveToFile(self, filename: str) -> None:
         if not hasattr(self, "result"):
             raise TipException("无搜索结果")
+
+    def monitor(self, monitor_queue: Queue, total: int) -> None:
+        # start progress bar
+        self.tip.setTip("准备中...")
+        start = time.time()
+        size = 0
+        while True:
+            cunrrent_size = monitor_queue.qsize()
+            if cunrrent_size == size:
+                if time.time() - start > TIMEOUT:
+                    raise TipException("连接超时")
+            elif monitor_queue.full():
+                break
+            else:
+                self.tip.setTip(f"下载中：{cunrrent_size}/{total}")
+                self.tip.bar["value"] = 100 * cunrrent_size / total
+            time.sleep(TIP_REFRESH)

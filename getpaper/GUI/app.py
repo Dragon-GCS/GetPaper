@@ -10,7 +10,7 @@ from getpaper.config import APP_NAME, FONT, FRAME_STYLE
 
 
 class Application(Style):
-    def __init__(self, theme):
+    def __init__(self, theme: str) -> None:
         super().__init__(theme)
         self.master.title(APP_NAME)
         self.master.minsize(960, 600)
@@ -32,15 +32,15 @@ class Application(Style):
         menu.add_command(label = '全部下载', command = self.downloadAll)
         self.master['menu'] = menu
 
-    def run(self):
+    def run(self) -> None:
         self.master.mainloop()
 
-    def saveToFile(self):
+    def saveToFile(self) -> None:
         filename = asksaveasfilename(defaultextension = '.xslx', filetypes = [('xlsx', '.xlsx')])
         print("Save file to file:", filename)
         self.main_frame.saveToFile(filename)
 
-    def downloadAll(self):
-        dir = askdirectory()
-        print("DownLoad All to dictory", dir)
-        self.main_frame.downloadAll(dir)
+    def downloadAll(self) -> None:
+        target_dir = askdirectory()
+        print("DownLoad All to dictory", target_dir)
+        self.main_frame.downloadAll(target_dir)

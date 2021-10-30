@@ -1,5 +1,5 @@
 import asyncio
-from queue import Queue
+from queue import PriorityQueue
 from typing import Dict
 
 from bs4 import BeautifulSoup
@@ -35,9 +35,9 @@ class Spider(_Spider):
             return "连接超时"
 
     @AsyncFunc
-    async def getAllPapers(self, result_queue: Queue, num: int):
+    async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
         num = result_queue.maxsize
-        return super().getAllPapers(num)
+        return super().getAllPapers(result_queue, num)
 
 
 if __name__ == '__main__':

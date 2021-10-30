@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter.filedialog import asksaveasfilename
 from tkinter.ttk import Button, Combobox, Frame, Scrollbar
-from typing import List, Tuple, Union
+from typing import Sequence
 
 from getpaper.GUI.main_frame import TipFrame
 from getpaper.config import FONT, FRAME_STYLE, RESULT_LIST_CN, RESULT_LIST_EN, translator_list
@@ -10,8 +10,8 @@ from getpaper.utils import getTranslator, startThread
 
 
 class TextFrame(Frame):
-    def __init__(self, master, detail: Union[List, Tuple] = (), **kwargs) -> None:
-        super().__init__(master = master, **kwargs)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 1)
         # 结果显示区
@@ -22,23 +22,23 @@ class TextFrame(Frame):
         self.text.configure(yscrollcommand = vbar.set)
         vbar.grid(row = 0, column = 1, sticky = tk.NS)
 
-    def enShow(self, detail: Union[List, Tuple]) -> None:
+    def enShow(self, detail: Sequence[str]) -> None:
         self._show(detail, RESULT_LIST_EN)
 
-    def cnShow(self, detail: Union[List, Tuple]) -> None:
+    def cnShow(self, detail: Sequence[str]) -> None:
         self._show(detail, RESULT_LIST_CN)
 
-    def _show(self, detail: Union[List, Tuple], header: List):
+    def _show(self, detail: Sequence[str], header: Sequence[str]):
         """Output detail as format"""
         # https://tkdocs.com/shipman/text-index.html
         self.text.delete('1.0', "insert")
         for i, item in enumerate(header):
             self.text.insert("insert", item)
-            self.text.insert("insert", detail[i] + "\n\n")
+            self.text.insert("insert", f"{detail[i]}\n\n")
 
 
 class DetailWindow(tk.Toplevel):
-    def __init__(self, detail: Union[List[str], Tuple[str]], downloader: Downloader):
+    def __init__(self, detail: Sequence[str], downloader: Downloader):
         super().__init__()
         self.title = "文章详情"
         self.option_add("*Font", FONT)
@@ -75,12 +75,12 @@ class DetailWindow(tk.Toplevel):
         self.detail_frame.rowconfigure(0, weight = 1)
         self.detail_frame.grid(row = 1, sticky = tk.NSEW)
         # 英文详情
-        self.en_text = TextFrame(self.detail_frame, detail = self.detail)
+        self.en_text = TextFrame(self.detail_frame)
         self.en_text.text.config(font = ("Times", 14))  # 设置英文字体
         self.en_text.grid(row = 0, column = 0, sticky = tk.NSEW)
         self.en_text.enShow(self.detail)
         # 翻译结果 
-        self.ch_text = TextFrame(self.detail_frame, detail = self.detail)
+        self.ch_text = TextFrame(self.detail_frame)
         self.ch_text.grid(row = 0, column = 1, sticky = tk.NSEW)
 
     def chooseTranslator(self, event = None):
@@ -88,14 +88,23 @@ class DetailWindow(tk.Toplevel):
         self.choose.selection_clear()
         print("choose translator:", self.choose.get())
 
+    @startThread("Download_Paper")
     def download(self) -> None:
         filename = asksaveasfilename(parent = self, defaultextension = ".pdf", filetypes = [("pdf", ".pdf")])
-        print("Save file to file:", filename)
-        self.en_text.enShow(["fhdisaofdsayiuogyuaiofdsahjkdlzhfudiaoyfdiua"] * 50)
-        pass
+        self.download_button.state(["disabled"])
+        self.tip.grid(row = 0, column = 5, columnspan = 3, sticky = tk.EW)
+        self.tip.setTip("下载中...")
+        try:
+            self.downloader.download(self.detail[5], filename)
+        except Exception as e:
+            print(e)
+            self.tip.setTip("未知错误")
+        finally:
+            self.tip.bar.stop()
+            self.trans_button.state(["!disabled"])
 
     @startThread("Translate")
-    def translate(self):
+    def translate(self) -> None:
         print("translate by :", self.translator)
         self.trans_button.state(["disabled"])
         # 显示Tip bar
@@ -108,7 +117,7 @@ class DetailWindow(tk.Toplevel):
             zh_detail[4] = self.translator.translate(self.detail[4])
             self.ch_text.cnShow(zh_detail)
         except Exception as e:
-            self.ch_text.cnShow([e])
+            self.ch_text.cnShow([str(e)])
         finally:
             self.tip.bar.stop()
             # 关闭Tip bar

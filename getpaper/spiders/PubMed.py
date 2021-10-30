@@ -1,18 +1,33 @@
+import asyncio
 import re
-from asyncio import gather
 from queue import PriorityQueue
-from typing import Dict
+from typing import Any, Dict, Optional
 
+import aiohttp
 from bs4 import BeautifulSoup
 
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, TipException, getSession
 
+GET_FREQUENCY = 0.1
+
 
 class Spider(_Spider):
     base_url = "https://pubmed.ncbi.nlm.nih.gov/"
 
-    def parseData(self, keyword: str, start_year: str, end_year: str, author: str, journal: str, sorting: str) -> Dict:
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.result_queue: Optional[PriorityQueue] = None
+        self.session: Optional[aiohttp.ClientSession] = None
+
+    def parseData(self, keyword: str,
+                  start_year: str,
+                  end_year: str,
+                  author: str,
+                  journal: str,
+                  sorting: str) -> Dict[str, Any]:
+        """parse input parameters as url data"""
+
         data = {}
         term = [f"{keyword}"]
         # 处理搜索时间范围
@@ -58,7 +73,7 @@ class Spider(_Spider):
             bs = BeautifulSoup(html, 'lxml')
             if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
                 self.result_queue.maxsize = 1
-                self.result_queue.put((0, ["Not found"] * 7))
+                self.result_queue.put((0, ["Not found any papers"] * 7))
                 raise TipException("未找到相关文献")
             result = tag.text.split()
             pmid_list.extend(result)
@@ -71,9 +86,10 @@ class Spider(_Spider):
 
     async def getPagesInfo(self, index: int, pmid: str):
         web = self.base_url + pmid
+        await asyncio.sleep(index * GET_FREQUENCY)  # 降低访问频率
         try:
-            html = await self.session.get(web)
-            bs = BeautifulSoup(await html.text(), "lxml")
+            async with self.session.get(web) as html:
+                bs = BeautifulSoup(await html.text(), "lxml")
         except Exception as e:
             print("PubMed Spider Error: ", e)
             print("Error PIMD: ", pmid)
@@ -105,21 +121,30 @@ class Spider(_Spider):
                 if (tag := content.find("a", attrs = {'data-ga-action': 'DOI'})) \
                 else ""
 
-            if (tag := content.find(class_ = 'full-text-links-list')):
+            if tag := content.find(class_ = 'full-text-links-list'):
                 web = tag.a['href']
         finally:
             self.result_queue.put((index,
                                    (title, authors, date, publication, abstract, doi, web)))
 
     @AsyncFunc
-    async def getAllPapers(self, result_queue: PriorityQueue, num: int):
+    async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
         self.result_queue = result_queue
-        self.session = getSession()
+
+        if getattr(self, "session", None) is None:
+            self.session = getSession()
+
         tasks = []
         for index, pmid in enumerate(await self.getPMIDs(num)):
             tasks.append(self.getPagesInfo(index, pmid))
-        await gather(*tasks)
-        await self.session.close()
+
+        await asyncio.gather(*tasks)
+
+        if hasattr(self, "session"):
+            try:
+                await self.session.close()
+            finally:
+                del self.session
 
 
 if __name__ == '__main__':
@@ -133,6 +158,6 @@ if __name__ == '__main__':
 
     print(pubmed.getTotalPaperNum())
     q = PriorityQueue(6)
-    result = pubmed.getAllPapers(q, 6)
+    pubmed.getAllPapers(q, 6)
     for i in range(5):
         print(q.get())

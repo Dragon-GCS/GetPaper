@@ -1,10 +1,11 @@
 import asyncio
+import sys
 from datetime import datetime
 from functools import wraps
 from importlib import import_module
 from queue import PriorityQueue
 from threading import Thread
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional
 
 from aiohttp import ClientSession, CookieJar
 
@@ -17,7 +18,7 @@ def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     :param name: spider's name, spider's class name is {name}Spider
     :return spider: an instance of specified by name
     """
-    cls = import_module(f"getpaper.spiders.{name}").Spider
+    cls = getattr(import_module(f"getpaper.spiders.{name}"), "Spider")
     return cls(*args, **kwargs)
 
 
@@ -27,7 +28,7 @@ def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
     :param name: translator's name, translator's class name is Translator
     :return translator: an instance of specified by name
     """
-    cls = import_module(f"getpaper.translator.{name}").Translator
+    cls = getattr(import_module(f"getpaper.translator.{name}"), "Translator")
     return cls(*args, **kwargs)
 
 
@@ -48,16 +49,15 @@ def AsyncFunc(func: Callable[..., Any]):
 
     @wraps(func)
     def wrapped(*args, **kwargs):
-        loop = asyncio.new_event_loop()
-        result = loop.run_until_complete(func(*args, **kwargs))
-        # run below code to aviod RunTimeError raised by aiohttp's bug
-        loop.run_until_complete(asyncio.sleep(0.1))
-        return result
+        # run below code to avoid RunTimeError raised by aiohttp's on windows
+        if sys.platform.startswith("win"):
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        return asyncio.run(func(*args, **kwargs))
 
     return wrapped
 
 
-def startThread(thread_name: str = None):
+def startThread(thread_name: str = ""):
     """A decorator for running app function in new thread, name for debug"""
 
     def middle(func: Callable[..., Any]):
@@ -96,17 +96,17 @@ def checkSpider(func: Callable[..., Any]):
     return wrapped
 
 
-def getQueueData(queue: PriorityQueue):
+def getQueueData(queue: PriorityQueue) -> List[str]:
     """
-    Sort data in queue by item[0]
+    Sort details in queue by item[0]
     Args:
         queue: result queue
     Returns:
-        returns: list of sorted data in queue
+        returns: list of sorted details in queue
     """
     result = []
     while not queue.empty():
-        result.append(queue.get())
+        result.append(queue.get()[1])
     return result
 
 
@@ -115,7 +115,7 @@ class MyThread(Thread):
         super().__init__(**kwargs)
         self.tip_set = tip_set
 
-    def run(self):
+    def run(self) -> None:
         """Overwrite self.run() for catching the TipException and show on Tipbar"""
         try:
             self.result = self._target(*self._args, **self._kwargs) \

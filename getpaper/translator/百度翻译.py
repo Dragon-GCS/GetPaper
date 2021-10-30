@@ -2,7 +2,7 @@ import json
 import time
 from hashlib import md5
 from random import randint
-from typing import Dict
+from typing import Any, Dict
 
 from getpaper.config import ROOT_DIR
 from getpaper.utils import AsyncFunc, TipException, getSession
@@ -37,7 +37,7 @@ class Translator:
                 'sign' : ""
         }
 
-    def process(self, query: str) -> Dict:
+    def process(self, query: str) -> Dict[str, Any]:
         sign = self.appid + query + self.salt + self.key
         self.data["sign"] = make_md5(sign)
         self.data["q"] = query
@@ -55,6 +55,8 @@ class Translator:
                     raise TipException("翻译失败")
                 if result.get("error_code") == "54003":
                     time.sleep(1)
+                elif result.get("error_code") == "52003":
+                    return "Api密钥无效"
                 else:
                     break
         return "\n".join([item["dst"] for item in result["trans_result"]])
