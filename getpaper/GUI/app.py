@@ -36,11 +36,17 @@ class Application(Style):
         self.master.mainloop()
 
     def saveToFile(self) -> None:
-        filename = asksaveasfilename(defaultextension = '.xslx', filetypes = [('xlsx', '.xlsx')])
-        print("Save file to file:", filename)
-        self.main_frame.saveToFile(filename)
+        if not hasattr(self.main_frame, "result"):
+            self.main_frame.tip.setTip("无搜索结果")
+        else:
+            filename = asksaveasfilename(defaultextension = '.csv', filetypes = [('csv', '.csv')])
+            print("Save file to file:", filename)
+            self.main_frame.saveToFile(filename)
 
     def downloadAll(self) -> None:
-        target_dir = askdirectory()
-        print("DownLoad All to dictory", target_dir)
-        self.main_frame.downloadAll(target_dir)
+        if not hasattr(self.main_frame, "result"):
+            self.main_frame.tip.setTip("无搜索结果")
+        else:
+            target_dir = askdirectory()
+            print("DownLoad All to dictory", target_dir)
+            self.main_frame.downloadAll(target_dir)

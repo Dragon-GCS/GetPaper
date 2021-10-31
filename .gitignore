@@ -2,6 +2,8 @@
 .vscode/
 .idea/
 **/__pycache__/
+**/dist/
+**/build/
 
 **/_*.json
 *test*

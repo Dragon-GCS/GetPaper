@@ -75,7 +75,6 @@ class SciHubDownloader:
             self.session = getSession()
 
         await self._download(doi, filename)
-
         if hasattr(self, "session"):
             try:
                 await self.session.close()

@@ -1,9 +1,10 @@
+import csv
 import time
 import tkinter as tk
 from queue import PriorityQueue, Queue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
-from getpaper.config import DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
+from getpaper.config import (DEFAULT_SCI_HUB_URL, RESULT_LIST_EN, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
 from getpaper.download import SciHubDownloader
 from getpaper.utils import MyThread, TipException, checkSpider, getQueueData, startThread
 
@@ -143,15 +144,17 @@ class MainFrame(Frame):
             self.result = getQueueData(result)
             # get item from queue and send all to result frame
             self.result_frame.createForm(self.result)
+        except Exception as e:
+            print("Download Detail Error:", e)
+        else:
+            self.tip.setTip("获取结束")
         finally:
             self.download_button.state(["!disabled"])
             self.tip.bar.stop()
-            self.tip.setTip("获取结束")
+            
 
     @startThread("Download_All")
     def downloadAll(self, dir_name: str) -> None:
-        if not hasattr(self, "result"):
-            raise TipException("请先点击获取详情")
         self.tip.setTip("准备下载中...")
 
         try:
@@ -166,13 +169,20 @@ class MainFrame(Frame):
             self.monitor(monitor, len(self.result))
 
         finally:
-            self.tip.bar.stop()
             self.tip.setTip("下载结束")
+            self.tip.bar.stop()
 
     @startThread("Save_File")
     def saveToFile(self, filename: str) -> None:
-        if not hasattr(self, "result"):
-            raise TipException("无搜索结果")
+        try:
+            with open(filename, "w", newline = "", encoding = "utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow([s.strip(":\n") for s in RESULT_LIST_EN])
+                writer.writerows(self.result)
+            self.tip.setTip("保存成功")
+        except Exception as e:
+            print("Save to file Error: ", e)
+            self.tip.setTip("保存失败")
 
     def monitor(self, monitor_queue: Queue, total: int) -> None:
         # start progress bar
@@ -190,3 +200,4 @@ class MainFrame(Frame):
                 self.tip.setTip(f"下载中：{cunrrent_size}/{total}")
                 self.tip.bar["value"] = 100 * cunrrent_size / total
             time.sleep(TIP_REFRESH)
+            print(f"{size = }")

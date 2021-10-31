@@ -96,12 +96,15 @@ class DetailWindow(tk.Toplevel):
         self.tip.setTip("下载中...")
         try:
             self.downloader.download(self.detail[5], filename)
+            self.tip.bar.stop()
         except Exception as e:
-            print(e)
+            print("Download Paper Error: ", e)
             self.tip.setTip("未知错误")
+        else:
+            self.tip.setTip("下载完成")
         finally:
             self.tip.bar.stop()
-            self.trans_button.state(["!disabled"])
+            self.download_button.state(["!disabled"])
 
     @startThread("Translate")
     def translate(self) -> None:
