@@ -1,4 +1,5 @@
 import csv
+import logging
 import time
 import tkinter as tk
 from queue import PriorityQueue, Queue
@@ -8,6 +9,7 @@ from getpaper.config import (DEFAULT_SCI_HUB_URL, RESULT_LIST_EN, SORTED_BY, TIM
 from getpaper.download import SciHubDownloader
 from getpaper.utils import MyThread, TipException, checkSpider, getQueueData, startThread
 
+log = logging.getLogger("GetPaper")
 
 class TipFrame(Frame):
     def __init__(self, master: tk.Widget) -> None:
@@ -112,24 +114,26 @@ class MainFrame(Frame):
         self.tip.bar.start()
         try:
             self.tip.setTip(self.spider.getTotalPaperNum())
+        except Exception as e:
+            log.error(e)
         finally:
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
     @checkSpider
-    @startThread("Download_Detail")
+    @startThread("FetchDetail")
     def getDetail(self) -> None:
         """
         Download paper details, include:
         Title, Authors, Date, Publication, Abstract, doi, Url
         """
         self.download_button.state(["disabled"])
-
+        self.tip.setTip("准备中...")
         try:
             num = int(self.num.get())
             if num < 1:
                 raise TipException("文献数不为正整数")
-
+        
             # create a Queue to store result
             result = PriorityQueue(num)
             # Start task on new thread 
@@ -137,7 +141,7 @@ class MainFrame(Frame):
             MyThread(tip_set = self.tip.setTip,
                      target = self.spider.getAllPapers,
                      args = (result, num),
-                     name = "download_task").start()
+                     name = f"{self.engine.get()} Fetch").start()
 
             self.monitor(result, num)
 
@@ -145,7 +149,7 @@ class MainFrame(Frame):
             # get item from queue and send all to result frame
             self.result_frame.createForm(self.result)
         except Exception as e:
-            print("Download Detail Error:", e)
+            log.error(e)
         else:
             self.tip.setTip("获取结束")
         finally:
@@ -153,7 +157,7 @@ class MainFrame(Frame):
             self.tip.bar.stop()
             
 
-    @startThread("Download_All")
+    @startThread("DownloadPapers")
     def downloadAll(self, dir_name: str) -> None:
         self.tip.setTip("准备下载中...")
 
@@ -164,7 +168,7 @@ class MainFrame(Frame):
             MyThread(tip_set = self.tip.setTip,
                      target = downloader.multiDownload,
                      args = (self.result, monitor, dir_name),
-                     name = "multidownload_task")
+                     name = "Multi-Download").start()
 
             self.monitor(monitor, len(self.result))
 
@@ -181,12 +185,11 @@ class MainFrame(Frame):
                 writer.writerows(self.result)
             self.tip.setTip("保存成功")
         except Exception as e:
-            print("Save to file Error: ", e)
+            log.error(f"Save {filename} failed: ", e)
             self.tip.setTip("保存失败")
 
     def monitor(self, monitor_queue: Queue, total: int) -> None:
         # start progress bar
-        self.tip.setTip("准备中...")
         start = time.time()
         size = 0
         while True:
@@ -200,4 +203,3 @@ class MainFrame(Frame):
                 self.tip.setTip(f"下载中：{cunrrent_size}/{total}")
                 self.tip.bar["value"] = 100 * cunrrent_size / total
             time.sleep(TIP_REFRESH)
-            print(f"{size = }")

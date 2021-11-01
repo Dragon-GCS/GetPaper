@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from queue import PriorityQueue
 from typing import Any, Dict, Optional
@@ -10,7 +11,7 @@ from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, TipException, getSession
 
 GET_FREQUENCY = 0.1
-
+log = logging.getLogger("GetPaper")
 
 class Spider(_Spider):
     base_url = "https://pubmed.ncbi.nlm.nih.gov/"
@@ -87,12 +88,12 @@ class Spider(_Spider):
     async def getPagesInfo(self, index: int, pmid: str):
         web = self.base_url + pmid
         await asyncio.sleep(index * GET_FREQUENCY)  # 降低访问频率
+        log.debug(f"Fetching PMID[{pmid}]")
         try:
             async with self.session.get(web) as html:
                 bs = BeautifulSoup(await html.text(), "lxml")
         except Exception as e:
-            print("PubMed Spider Error: ", e)
-            print("Error PIMD: ", pmid)
+            log.error(f"PMID[{pmid}] Spider Error: {e}")
             title, authors, date, publication, abstract, doi = ["Error"] * 6
         else:
             content = bs.find("main", class_ = "article-details")

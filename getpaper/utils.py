@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 from datetime import datetime
 from functools import wraps
@@ -11,6 +12,7 @@ from aiohttp import ClientSession, CookieJar
 
 from getpaper.config import HEADER, TIMEOUT
 
+log = logging.getLogger("GetPaper")
 
 def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     """
@@ -123,7 +125,7 @@ class MyThread(Thread):
         except TipException as t:
             self.tip_set(t.tip)
         except Exception as e:
-            print(f"Thread '{self.name}' exception:", e)
+            log.error(e)
             self.tip_set("未知错误")
         finally:
             del self._target, self._args, self._kwargs

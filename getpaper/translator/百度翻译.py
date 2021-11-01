@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from hashlib import md5
 from random import randint
@@ -7,6 +8,7 @@ from typing import Any, Dict
 from getpaper.config import ROOT_DIR
 from getpaper.utils import AsyncFunc, TipException, getSession
 
+log = logging.getLogger("GetPaper")
 
 def make_md5(s, encoding = 'utf-8'):
     return md5(s.encode(encoding)).hexdigest()
@@ -23,6 +25,7 @@ class Translator:
             with open(ROOT_DIR.joinpath("api_info.json"), encoding = "utf8") as f:
                 info = json.load(f)
         except FileNotFoundError:
+            log.info("未找到密钥文件")
             raise TipException("未找到密钥文件")
         else:
             self.key = info["百度翻译"]["key"]
@@ -52,6 +55,7 @@ class Translator:
                     response = await session.post(self.url, params = data)
                     result = await response.json()
                 except Exception as e:
+                    log.error(f"翻译失败：{e}")
                     raise TipException("翻译失败")
                 if result.get("error_code") == "54003":
                     time.sleep(1)

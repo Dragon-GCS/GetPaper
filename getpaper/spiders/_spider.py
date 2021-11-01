@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from queue import PriorityQueue
 from typing import Any, Dict
@@ -7,6 +8,7 @@ from aiohttp import ClientSession
 
 from getpaper.utils import TipException
 
+log = logging.getLogger("GetPaper")
 
 class _Spider(ABC):
     base_url: str
@@ -33,10 +35,11 @@ class _Spider(ABC):
         """Async get html"""
         try:
             async with session.get(self.base_url, params = params) as response:
-                print("Get url: ", response.url)
+                log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
                 html = await response.text()
             return html
         except asyncio.exceptions.TimeoutError:
+            log.info("Get Url Time Out")
             raise TipException("连接超时")
 
     @abstractmethod

@@ -1,3 +1,5 @@
+import logging
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askdirectory, asksaveasfilename
@@ -8,6 +10,7 @@ from getpaper.GUI.main_frame import MainFrame
 from getpaper.GUI.result_frame import ResultFrame
 from getpaper.config import APP_NAME, FONT, FRAME_STYLE
 
+log = logging.getLogger("GetPaper")
 
 class Application(Style):
     def __init__(self, theme: str) -> None:
@@ -40,13 +43,17 @@ class Application(Style):
             self.main_frame.tip.setTip("无搜索结果")
         else:
             filename = asksaveasfilename(defaultextension = '.csv', filetypes = [('csv', '.csv')])
-            print("Save file to file:", filename)
-            self.main_frame.saveToFile(filename)
+            if filename:
+                filename = os.path.abspath(filename)
+                log.info(f"Save file to file: {filename}")
+                self.main_frame.saveToFile(filename)
 
     def downloadAll(self) -> None:
         if not hasattr(self.main_frame, "result"):
             self.main_frame.tip.setTip("无搜索结果")
         else:
             target_dir = askdirectory()
-            print("DownLoad All to dictory", target_dir)
-            self.main_frame.downloadAll(target_dir)
+            if target_dir:
+                target_dir = os.path.abspath(target_dir)
+                log.info(f"Downloading all paper to dictory: {target_dir}")
+                self.main_frame.downloadAll(target_dir)

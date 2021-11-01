@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import re
 from queue import Queue
@@ -10,6 +11,7 @@ from bs4 import BeautifulSoup
 
 from getpaper.utils import AsyncFunc, getSession
 
+log = logging.getLogger("GetPaper")
 
 def checkFilename(filename: str, suffix: str = ".pdf"):
     valid_name = re.sub(r"[:?/*|<>\"\\]", "", filename).rstrip(".")
@@ -40,32 +42,44 @@ class SciHubDownloader:
 
         url = f"{self.url}/{doi}"
         content: bytes = b''
+        signal: bool = False
 
-        try:
-            async with self.session.get(url) as response:
-                bs = BeautifulSoup(await response.text(), "lxml")
-                if pdf := bs.find("iframe", id = "pdf"):
-                    async with self.session.get(pdf["src"].split("#")[0]) as result:
-                        content = await result.read()
-                else:
-                    filename += ".txt"
-                    content = f"Sci-Hub has not yet included this paper\ndoi: {doi}".encode("utf-8")
+        log.debug(f"Downloading doi: {doi}")
 
-        except asyncio.exceptions.TimeoutError:
+        if doi:
+            for _ in range(3):
+                # try 3 times for download
+                try:
+                    async with self.session.get(url) as response:
+                        bs = BeautifulSoup(await response.text(), "lxml")
+                        if pdf := bs.find("iframe", id = "pdf"):
+                            async with self.session.get(pdf["src"].split("#")[0]) as result:
+                                content = await result.read()
+                                signal = True
+                        else:
+                            content = f"Sci-Hub has not yet included this paper\ndoi: {doi}".encode("utf-8")
+                        break
+
+                except asyncio.exceptions.TimeoutError:
+                    log.debug(f"Connect timeout\nURL: {url}")
+                    content = f"Connect timeout\nURL: {url}".encode("utf-8")
+
+                except Exception as e:
+                    log.error(f"Error URL: {url} ", e)
+                    content = f"Unknown Error\nURL: {url}".encode("utf-8")
+        else:
+            content = f"{filename.rstrip('.pdf')}\nNot found doi".encode("utf-8")
+
+        if not signal:
             filename += ".txt"
-            content = f"Connect timeout\nURL: {url}".encode("utf-8")
+        
+        with open(filename, "wb") as f:
+            f.write(content)
 
-        except Exception as e:
-            print(f"Error URL: {url} ", e)
-            filename += ".txt"
-            content = f"Unknown Error\nURL: {url}".encode("utf-8")
+        if getattr(self, "monitor", None) is not None:
+            self.monitor.put((filename, signal))
 
-        finally:
-            with open(filename, "wb") as f:
-                f.write(content)
-            if getattr(self, "monitor", None) is not None:
-                self.monitor.put(filename)
-            print("Download finish: ", filename)
+        log.debug(f"Download finish: {filename}")
 
     @AsyncFunc
     async def download(self, doi: str, filename: str = None) -> None:

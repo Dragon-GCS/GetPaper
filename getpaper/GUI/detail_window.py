@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 from tkinter.filedialog import asksaveasfilename
 from tkinter.ttk import Button, Combobox, Frame, Scrollbar
@@ -8,6 +9,7 @@ from getpaper.config import FONT, FRAME_STYLE, RESULT_LIST_CN, RESULT_LIST_EN, t
 from getpaper.download import Downloader
 from getpaper.utils import getTranslator, startThread
 
+log = logging.getLogger("GetPaper")
 
 class TextFrame(Frame):
     def __init__(self, *args, **kwargs) -> None:
@@ -86,11 +88,17 @@ class DetailWindow(tk.Toplevel):
     def chooseTranslator(self, event = None):
         self.translator = getTranslator(self.choose.get())
         self.choose.selection_clear()
-        print("choose translator:", self.choose.get())
+        log.info(f"choose translator: {self.choose.get()}")
 
     @startThread("Download_Paper")
     def download(self) -> None:
-        filename = asksaveasfilename(parent = self, defaultextension = ".pdf", filetypes = [("pdf", ".pdf")])
+        filename = asksaveasfilename(parent = self, 
+                                     defaultextension = ".pdf", 
+                                     filetypes = [("pdf", ".pdf")])
+
+        if not filename:
+            return
+
         self.download_button.state(["disabled"])
         self.tip.grid(row = 0, column = 5, columnspan = 3, sticky = tk.EW)
         self.tip.setTip("下载中...")
@@ -98,7 +106,7 @@ class DetailWindow(tk.Toplevel):
             self.downloader.download(self.detail[5], filename)
             self.tip.bar.stop()
         except Exception as e:
-            print("Download Paper Error: ", e)
+            log.error(f"Download Paper Error: {e}")
             self.tip.setTip("未知错误")
         else:
             self.tip.setTip("下载完成")
@@ -108,7 +116,7 @@ class DetailWindow(tk.Toplevel):
 
     @startThread("Translate")
     def translate(self) -> None:
-        print("translate by :", self.translator)
+        log.info(f"translate by : {self.translator}",)
         self.trans_button.state(["disabled"])
         # 显示Tip bar
         self.tip.grid(row = 0, column = 5, columnspan = 3, sticky = tk.EW)
