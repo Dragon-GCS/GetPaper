@@ -132,9 +132,10 @@ class MainFrame(Frame):
         try:
             num = int(self.num.get())
             if num < 1:
-                raise TipException("文献数不为正整数")
-        
+                self.tip.setTip("文献数不为正整数")
+                return
             # create a Queue to store result
+            log.info(f"Fetch num: {num}")
             result = PriorityQueue(num)
             # Start task on new thread 
             # tip_set function for catching TipException show on GUI
@@ -145,16 +146,23 @@ class MainFrame(Frame):
 
             self.monitor(result, num)
 
-            self.result = getQueueData(result)
-            # get item from queue and send all to result frame
-            self.result_frame.createForm(self.result)
+
         except Exception as e:
             log.error(e)
         else:
             self.tip.setTip("获取结束")
         finally:
-            self.download_button.state(["!disabled"])
-            self.tip.bar.stop()
+            size = 0
+            try:
+                if not result.empty():
+                    size = result.qsize()
+                    self.result = getQueueData(result)
+                    # get item from queue and send all to result frame
+                    self.result_frame.createForm(self.result)
+            finally:
+                self.download_button.state(["!disabled"])
+                self.tip.setTip(f"抓取完成， 共{size}篇")
+                self.tip.bar.stop()
             
 
     @startThread("DownloadPapers")
@@ -193,13 +201,15 @@ class MainFrame(Frame):
         start = time.time()
         size = 0
         while True:
-            cunrrent_size = monitor_queue.qsize()
-            if cunrrent_size == size:
+            current_size = monitor_queue.qsize()
+            if current_size == size:
                 if time.time() - start > TIMEOUT:
                     raise TipException("连接超时")
             elif monitor_queue.full():
                 break
             else:
-                self.tip.setTip(f"下载中：{cunrrent_size}/{total}")
-                self.tip.bar["value"] = 100 * cunrrent_size / total
+                start = time.time()
+                size = current_size
+                self.tip.setTip(f"下载中：{current_size}/{total}")
+                self.tip.bar["value"] = 100 * current_size / total
             time.sleep(TIP_REFRESH)
