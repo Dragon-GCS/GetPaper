@@ -116,7 +116,7 @@ class DetailWindow(tk.Toplevel):
 
     @startThread("Translate")
     def translate(self) -> None:
-        log.info(f"translate by : {self.translator}",)
+        log.info(f"translate by : {self.translator.__module__}",)
         self.trans_button.state(["disabled"])
         # 显示Tip bar
         self.tip.grid(row = 0, column = 5, columnspan = 3, sticky = tk.EW)

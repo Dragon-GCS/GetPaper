@@ -22,25 +22,27 @@ class Spider(_Spider):
         self.session: Optional[aiohttp.ClientSession] = None
 
     def parseData(self, keyword: str,
-                  start_year: str,
-                  end_year: str,
-                  author: str,
-                  journal: str,
-                  sorting: str) -> Dict[str, Any]:
+                  start_year: str = "",
+                  end_year: str = "",
+                  author: str = "",
+                  journal: str = "",
+                  sorting: str = "") -> Dict[str, Any]:
         """parse input parameters as url data"""
-
         data = {}
+        # term字段处理
         term = [f"{keyword}"]
-        # 处理搜索时间范围
+        # term字段添加搜索时间范围
         if start_year and end_year:
             term.append(f"{start_year}:{end_year}[dp]")
-        # 指定搜索作者
+        # term字段添加搜索作者
         if author:
             term.append(f"{author}[author]")
-            # 指定搜索期刊
+        # term字段添加搜索期刊
         if journal:
             term.append(f"{journal}[journal]")
         data["term"] = " AND ".join(term)
+
+        # 搜索结果排序
         if sorting.startswith("日期"):
             data["sort"] = "date"
         if sorting.endswith("逆序"):
@@ -51,16 +53,25 @@ class Spider(_Spider):
     async def getTotalPaperNum(self):
         """获取查找文献的总数"""
         self.data["format"] = "summary"
-        async with getSession() as session:
-            html = await self.getHtml(session, self.data)
-        bs = BeautifulSoup(html, 'lxml')
-        if bs.find("span", class_ = "single-result-redirect-message"):
-            total_num = "1"
+        try:
+            async with getSession() as session:
+                async with session.get(self.base_url, params = self.data) as response:
+                    log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
+                    html = await response.text()
+        except asyncio.exceptions.TimeoutError:
+            log.info("PubMed Spider Get Total Num Time Out")
+            raise TipException("连接超时")
         else:
-            total_num = tag.text.replace(",", "") \
-                if (tag := bs.find("div", class_ = 'results-amount').span) \
-                else "0"
-        return f"共找到{total_num}篇"
+            bs = BeautifulSoup(html, 'lxml')
+            if bs.find("span", class_ = "single-result-redirect-message"):
+                total_num = "1"
+            else:
+                total_num = tag.text.replace(",", "") \
+                    if (tag := bs.find("div", class_ = 'results-amount').span) \
+                    else "0"
+            return f"共找到{total_num}篇"
+        
+        
 
     async def getPMIDs(self, num: int):
         """获取指定数量的文献的PMID列表"""
@@ -69,21 +80,33 @@ class Spider(_Spider):
                           "page"  : 1,
                           "format": "pmid"})
         # 按顺序请求网页并抓取PMID
-        while self.data["page"] <= num // 200 + 1:
-            html = await self.getHtml(self.session, self.data.copy())
-            bs = BeautifulSoup(html, 'lxml')
-            if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
-                self.result_queue.maxsize = 1
-                self.result_queue.put((0, ["Not found any papers"] * 7))
-                raise TipException("未找到相关文献")
-            result = tag.text.split()
-            pmid_list.extend(result)
+        try:
+            while self.data["page"] <= (num - 1) // 200 + 1:
+                async with self.session.get(self.base_url, params = self.data.copy()) as response:
+                    log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
+                    html = await response.text()
 
-            if len(result) == 1:
-                break
+                bs = BeautifulSoup(html, 'lxml')
+                # 未找到PMID将result_queue大小修改为1以停止GUI计数
+                if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
+                    self.result_queue.maxsize = 1
+                    self.result_queue.put((0, ["Not found any papers"] * 7))
+                    raise TipException("未找到相关文献")
 
-            self.data["page"] += 1
-        return pmid_list[:num]
+                result = tag.text.split()
+                pmid_list.extend(result)
+                # 若仅找到一个PMID则停止循环
+                if len(result) == 1:
+                    break
+
+                self.data["page"] += 1
+        except asyncio.exceptions.TimeoutError:
+            log.info("PubMed Fetch PMIDs Time Out")
+            raise TipException("连接超时")
+        except Exception as e:
+            log.error(f"PubMed Erro in fetching PMIDs[{self.data['page']} / { num // 200 + 1}]: {e}")
+        finally:
+            return pmid_list[:num]
 
     async def getPagesInfo(self, index: int, pmid: str):
         web = self.base_url + pmid
@@ -131,6 +154,7 @@ class Spider(_Spider):
     @AsyncFunc
     async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
         self.result_queue = result_queue
+        num = max(num ,1)
 
         if getattr(self, "session", None) is None:
             self.session = getSession()
@@ -158,7 +182,7 @@ if __name__ == '__main__':
                     )
 
     print(pubmed.getTotalPaperNum())
-    q = PriorityQueue(6)
-    pubmed.getAllPapers(q, 6)
-    for i in range(5):
+    q = PriorityQueue(1)
+    pubmed.getAllPapers(q, 1)
+    for i in range(1):
         print(q.get())

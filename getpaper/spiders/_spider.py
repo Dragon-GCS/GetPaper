@@ -31,17 +31,6 @@ class _Spider(ABC):
         """
         self.data = self.parseData(keyword, start_year, end_year, author, journal, sorting)
 
-    async def getHtml(self, session: ClientSession, params: Dict[str, Any]) -> str:
-        """Async get html"""
-        try:
-            async with session.get(self.base_url, params = params) as response:
-                log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
-                html = await response.text()
-            return html
-        except asyncio.exceptions.TimeoutError:
-            log.info("Get Url Time Out")
-            raise TipException("连接超时")
-
     @abstractmethod
     def parseData(self, keyword: str,
                   start_year: str,

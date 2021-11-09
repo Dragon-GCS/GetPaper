@@ -7,7 +7,7 @@ from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spin
 
 from getpaper.config import (DEFAULT_SCI_HUB_URL, RESULT_LIST_EN, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
 from getpaper.download import SciHubDownloader
-from getpaper.utils import MyThread, TipException, checkSpider, getQueueData, startThread
+from getpaper.utils import MyThread, TipException, setSpider, getQueueData, startThread
 
 log = logging.getLogger("GetPaper")
 
@@ -104,7 +104,7 @@ class MainFrame(Frame):
         self.download_button.grid(row = 0, column = 21)
         ###################### 第四行结束 ######################
 
-    @checkSpider
+    @setSpider
     @startThread("Search")
     def search(self) -> None:
         """Get the number of terms"""
@@ -113,14 +113,19 @@ class MainFrame(Frame):
         self.tip.setTip("搜索中")
         self.tip.bar.start()
         try:
-            self.tip.setTip(self.spider.getTotalPaperNum())
+            t = MyThread(tip_set = self.tip.setTip,
+                         target = self.spider.getTotalPaperNum,
+                         **{"name" : f"{self.engine.get()} Get_Num"})
+            t. start()
+            t.join()
+            self.tip.setTip(t.result)
         except Exception as e:
             log.error(e)
         finally:
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
-    @checkSpider
+    @setSpider
     @startThread("FetchDetail")
     def getDetail(self) -> None:
         """
@@ -141,18 +146,17 @@ class MainFrame(Frame):
             # tip_set function for catching TipException show on GUI
             MyThread(tip_set = self.tip.setTip,
                      target = self.spider.getAllPapers,
-                     args = (result, num),
-                     name = f"{self.engine.get()} Fetch").start()
+                     **{"args": (result, num),
+                        "name": f"{self.engine.get()} Fetch"}).start()
 
             self.monitor(result, num)
-
-
         except Exception as e:
             log.error(e)
         else:
             self.tip.setTip("获取结束")
         finally:
             size = 0
+            self.tip.bar.stop()
             try:
                 if not result.empty():
                     size = result.qsize()
@@ -162,7 +166,6 @@ class MainFrame(Frame):
             finally:
                 self.download_button.state(["!disabled"])
                 self.tip.setTip(f"抓取完成， 共{size}篇")
-                self.tip.bar.stop()
             
 
     @startThread("DownloadPapers")

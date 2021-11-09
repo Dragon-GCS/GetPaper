@@ -77,7 +77,7 @@ def startThread(thread_name: str = ""):
     return middle
 
 
-def checkSpider(func: Callable[..., Any]):
+def setSpider(func: Callable[..., Any]):
     """A decorator for check whether choose spider"""
 
     @wraps(func)
