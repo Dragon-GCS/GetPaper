@@ -2,19 +2,17 @@ import sys
 from pathlib import Path
 
 if hasattr(sys, "frozen"):
-    ROOT_DIR = Path(sys.executable).parent
     # add new module name without .py when using pyinstall
-    spider_list = ["PubMed", "ACS"]
+    spider_list = ["ACS", "PubMed"]
     translator_list = ["百度翻译"]
 else:
-    ROOT_DIR = Path(__file__).parent
     spider_list = \
         [spider.name.rstrip(".py")
-         for spider in ROOT_DIR.joinpath("spiders").iterdir()
+         for spider in Path(__file__).parent.joinpath("spiders").iterdir()
          if not spider.name.startswith("_")]
     translator_list = \
         [translator.name.rstrip(".py")
-         for translator in ROOT_DIR.joinpath("translator").iterdir()
+         for translator in Path(__file__).parent.joinpath("translator").iterdir()
          if not translator.name.startswith("_")]
 
 

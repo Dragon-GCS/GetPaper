@@ -5,9 +5,8 @@
 **/dist/
 **/build/
 
-**/_*.json
+**/api_info.json
 *test*
 *demo*
 *result*
 *.exe
-
