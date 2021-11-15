@@ -1,12 +1,7 @@
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from queue import PriorityQueue
 from typing import Any, Dict
-
-from aiohttp import ClientSession
-
-from getpaper.utils import TipException
 
 log = logging.getLogger("GetPaper")
 
@@ -42,7 +37,7 @@ class _Spider(ABC):
         return {}
 
     @abstractmethod
-    def getTotalPaperNum(self) -> None:
+    def getTotalPaperNum(self) -> str:
         """
         Get the total number of result
         Returns:

@@ -1,11 +1,11 @@
 import json
 import logging
 import time
+import importlib.resources
 from hashlib import md5
 from random import randint
 from typing import Any, Dict
 
-from getpaper.config import ROOT_DIR
 from getpaper.utils import AsyncFunc, TipException, getSession
 
 log = logging.getLogger("GetPaper")
@@ -22,8 +22,8 @@ class Translator:
 
     def __init__(self) -> None:
         try:
-            with open(ROOT_DIR.joinpath("api_info.json"), encoding = "utf8") as f:
-                info = json.load(f)
+            f = importlib.resources.open_text('getpaper.translator', '_api_info.json')
+            info = json.load(f)
         except FileNotFoundError:
             log.info("未找到密钥文件")
             raise TipException("未找到密钥文件")

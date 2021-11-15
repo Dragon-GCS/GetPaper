@@ -7,8 +7,9 @@ block_cipher = None
 a = Analysis(['main.pyw'],
              pathex=['E:\\ProjectFiles\\Python\\01_Spider\\01_GetPaper'],
              binaries=[],
-             datas=[(".venv/Lib/site-packages/ttkbootstrap/Symbola.ttf", "ttkbootstrap"),   # 静态文件
-                    (".venv/Lib/site-packages/ttkbootstrap/themes.json", "ttkbootstrap")],  # 静态文件
+             datas=[(".venv/Lib/site-packages/ttkbootstrap/Symbola.ttf", "ttkbootstrap"),  # Theme字体
+                    (".venv/Lib/site-packages/ttkbootstrap/themes.json", "ttkbootstrap"),  # Theme文件
+                    ("getpaper/translator/_api_info.json", "getpaper/translator")],        # 翻译api数据
              hiddenimports=[],
              hookspath=["./hook"],  # 动态导入用
              hooksconfig={},
