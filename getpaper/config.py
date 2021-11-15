@@ -21,8 +21,9 @@ else:
 HEADER = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/80.0.3987.132 Safari/537.36'}
 
-TIMEOUT = 15  # Global AsyncClient timeout
-TIP_REFRESH = 0.2  # MainFrame's tip bar refresh frequency
+TIMEOUT = 15        # Global AsyncClient timeout
+TIP_REFRESH = 0.2   # MainFrame's tip bar refresh frequency
+SCI_DELAY = 0.1     # add delay avoid putting too much pressure on the Sci_Hub server
 
 APP_NAME = "GetPaper"
 DEFAULT_SCI_HUB_URL = "sci-hub.ren"

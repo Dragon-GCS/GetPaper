@@ -10,6 +10,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from getpaper.utils import AsyncFunc, getSession
+from getpaper.config import SCI_DELAY
 
 log = logging.getLogger("GetPaper")
 
@@ -37,14 +38,15 @@ class SciHubDownloader:
             url = "https://" + url
         self.url = url
 
-    async def _download(self, doi: str, filename: str) -> None:
+    async def _download(self, doi: str, filename: str, index: int = 0) -> None:
         """Download and save to file"""
 
         url = f"{self.url}/{doi}"
         content: bytes = b''
-        signal: bool = False
+        flag: bool = False # success to find pdf url or not
 
         log.debug(f"Downloading doi: {doi}")
+        await asyncio.sleep(index * SCI_DELAY)  # add delay
 
         if doi:
             for _ in range(3):
@@ -55,7 +57,7 @@ class SciHubDownloader:
                         if pdf := bs.find("iframe", id = "pdf"):
                             async with self.session.get(pdf["src"].split("#")[0]) as result:
                                 content = await result.read()
-                                signal = True
+                                flag = True
                         else:
                             content = f"Sci-Hub has not yet included this paper\ndoi: {doi}".encode("utf-8")
                         break
@@ -70,19 +72,19 @@ class SciHubDownloader:
         else:
             content = f"{filename.rstrip('.pdf')}\nNot found doi".encode("utf-8")
 
-        if not signal:
+        if not flag:
             filename += ".txt"
         
         with open(filename, "wb") as f:
             f.write(content)
 
         if getattr(self, "monitor", None) is not None:
-            self.monitor.put((filename, signal))
+            self.monitor.put((filename, flag))
 
         log.debug(f"Download finish: {filename}")
 
     @AsyncFunc
-    async def download(self, doi: str, filename: str = None) -> None:
+    async def download(self, doi: str, filename: str = "") -> None:
         """Download paper by doi from sci-hub, and save as filename"""
 
         if getattr(self, "session", None) is None:
@@ -96,7 +98,8 @@ class SciHubDownloader:
                 del self.session
 
     @AsyncFunc
-    async def multiDownload(self, details: Sequence[Sequence[str]], monitor: Queue = None,
+    async def multiDownload(self, details: Sequence[Sequence[str]], 
+                            monitor: Queue = None,
                             target_dir: str = "") -> None:
         """Download all doi in details, save to file with title as name"""
 
@@ -109,10 +112,10 @@ class SciHubDownloader:
             os.makedirs(target_dir)
 
         task = []
-        for title, *_, doi, __ in details:
+        for index, (title, *_, doi, __) in enumerate(details) :
             valid_name = checkFilename(title)
             filename = os.path.join(target_dir, valid_name)
-            task.append(self._download(doi, filename))
+            task.append(self._download(doi, filename, index = index))
 
         await asyncio.gather(*task)
 
