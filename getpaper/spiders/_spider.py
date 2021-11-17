@@ -50,7 +50,7 @@ class _Spider(ABC):
         """
         Get all papers detail
         Params:
-            queue: a process queue for storing result and feedbacking progess,
+            queue: a priority queue for storing result and was monitored by GUI thred then feedbacking progess,
                 details format is [index, (title, authors, date, publication, abstract, doi, web)]
             num: number of papers to get
         """

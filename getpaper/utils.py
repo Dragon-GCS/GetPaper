@@ -16,10 +16,13 @@ log = logging.getLogger("GetPaper")
 
 def getSpider(name: str, *args, **kwargs) -> Optional[object]:
     """
-    Create a Spider by name
-    :param name: spider's name, spider's class name is {name}Spider
-    :return spider: an instance of specified by name
+    Return a Spider by name
+    Args:
+        name: Spider's filename, should be found in getpaper/spiders
+    Returns:
+        spider: An instance of specified by name
     """
+
     cls = getattr(import_module(f"getpaper.spiders.{name}"), "Spider")
     return cls(*args, **kwargs)
 
@@ -27,20 +30,25 @@ def getSpider(name: str, *args, **kwargs) -> Optional[object]:
 def getTranslator(name: str, *args, **kwargs) -> Optional[object]:
     """
     Create a Translator by name
-    :param name: translator's name, translator's class name is Translator
-    :return translator: an instance of specified by name
+    Args:
+        name: Translator's filename, should be found in getpaper/translator
+    Returns:
+        translator: An instance of specified by name
     """
+
     cls = getattr(import_module(f"getpaper.translator.{name}"), "Translator")
     return cls(*args, **kwargs)
 
 
 def getNowYear() -> str:
     """Get the year of now"""
+
     return str(datetime.now().year + 1)
 
 
 def getSession() -> ClientSession:
     """Create a async Http session by aiohttp"""
+
     return ClientSession(headers = HEADER,
                          read_timeout = TIMEOUT,
                          cookie_jar = CookieJar(unsafe = True))
@@ -114,11 +122,17 @@ def getQueueData(queue: PriorityQueue) -> List[str]:
 
 class MyThread(Thread):
     def __init__(self, tip_set: Callable[..., Any], **kwargs) -> None:
+        """
+        An thread that can catch the exception in the target and display on GUI, save returns of target.
+        Args:
+            tip_set: A function to display tip on GUI
+        """
         super().__init__(**kwargs)
         self.tip_set = tip_set
 
     def run(self) -> None:
         """Overwrite self.run() for catching the TipException and show on Tipbar"""
+        
         try:
             self.result = self._target(*self._args, **self._kwargs) \
                 if self._target else None

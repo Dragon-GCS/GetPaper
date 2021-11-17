@@ -41,6 +41,13 @@ class Translator:
         }
 
     def process(self, query: str) -> Dict[str, Any]:
+        """
+        Preprocess translation query
+        Args:
+            query: String to translate
+        Returns:
+            data: A dict storing translation string and processed sign.
+        """
         sign = self.appid + query + self.salt + self.key
         self.data["sign"] = make_md5(sign)
         self.data["q"] = query

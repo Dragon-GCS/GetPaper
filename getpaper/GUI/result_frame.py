@@ -13,7 +13,7 @@ class ResultFrame(Frame):
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 1)
 
-        # 设置表头
+        # Set headers
         self.headers = ('标题', '作者', '发表时间', '期刊')
         self.tree = Treeview(self,
                              columns = self.headers,
@@ -23,18 +23,22 @@ class ResultFrame(Frame):
             self.tree.heading(head, text = head)
         self.tree.grid(row = 0, sticky = tk.NSEW)
 
-        # 添加垂直滚动条
+        # Add vertical scroll bar
         vbar = Scrollbar(self, orient = 'vertical', command = self.tree.yview)
         self.tree.configure(yscrollcommand = vbar.set)
         vbar.grid(row = 0, column = 1, sticky = tk.NS)
 
-        # 双击显示详细信息
+        # Display detail window by double click
         self.tree.bind('<Double-Button-1>', lambda e: self.showItem())
 
     def createForm(self, data: Sequence[Sequence[str]]) -> None:
         """
-        搜索结果输入到结果框中，details = ((index, (title, authors, date, publication, abstract, doi, web)), ...)
+        Display search result on the result form.
+        Args:
+            data: Result sequence, each item's format is
+                  (index, (title, authors, date, publication, abstract, doi, web))
         """
+
         # remove previous result
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -43,6 +47,8 @@ class ResultFrame(Frame):
             self.tree.insert("", i, values = item)
 
     def showItem(self) -> None:
+        """The binding function of double click, display detail window."""
+
         detail = self.tree.item(self.tree.selection()[0], "values")
         sci_url = self.master.children["!mainframe"].scihub_url.get()
         downloader = SciHubDownloader(sci_url)

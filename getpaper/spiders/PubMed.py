@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from queue import PriorityQueue
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -18,7 +18,7 @@ class Spider(_Spider):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.result_queue: Optional[PriorityQueue] = None
+        self.result_queue: Optional[PriorityQueue] = PriorityQueue()
         self.session: Optional[aiohttp.ClientSession] = None
 
     def parseData(self, keyword: str,
@@ -29,20 +29,21 @@ class Spider(_Spider):
                   sorting: str = "") -> Dict[str, Any]:
         """parse input parameters as url data"""
         data = {}
-        # term字段处理
+        # Parsing term field
+        # Add keyword to term
         term = [f"{keyword}"]
-        # term字段添加搜索时间范围
+        # Add search time range to term
         if start_year and end_year:
             term.append(f"{start_year}:{end_year}[dp]")
-        # term字段添加搜索作者
+        # Add authors to term
         if author:
             term.append(f"{author}[author]")
-        # term字段添加搜索期刊
+        # Add publications to term
         if journal:
             term.append(f"{journal}[journal]")
         data["term"] = " AND ".join(term)
 
-        # 搜索结果排序
+        # Parsing result sort order
         if sorting.startswith("日期"):
             data["sort"] = "date"
         if sorting.endswith("逆序"):
@@ -51,7 +52,6 @@ class Spider(_Spider):
 
     @AsyncFunc
     async def getTotalPaperNum(self):
-        """获取查找文献的总数"""
         self.data["format"] = "summary"
         try:
             async with getSession() as session:
@@ -70,16 +70,18 @@ class Spider(_Spider):
                     if (tag := bs.find("div", class_ = 'results-amount').span) \
                     else "0"
             return f"共找到{total_num}篇"
-        
-        
 
-    async def getPMIDs(self, num: int):
-        """获取指定数量的文献的PMID列表"""
+    async def getPMIDs(self, num: int) -> Sequence[str]:
+        """
+        Get the paper's PMIDs
+        Args:
+            num: Number of PMIDs to fetch
+        """
         pmid_list = []
         self.data.update({"size"  : "200",
                           "page"  : 1,
                           "format": "pmid"})
-        # 按顺序请求网页并抓取PMID
+        # Get page by order and fetch PMIDs
         try:
             while self.data["page"] <= (num - 1) // 200 + 1:
                 async with self.session.get(self.base_url, params = self.data.copy()) as response:
@@ -87,7 +89,7 @@ class Spider(_Spider):
                     html = await response.text()
 
                 bs = BeautifulSoup(html, 'lxml')
-                # 未找到PMID将result_queue大小修改为1以停止GUI计数
+                # If no pmid was find, modify result.max_size to 1 for stop monitoring.
                 if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
                     self.result_queue.maxsize = 1
                     self.result_queue.put((0, ["Not found any papers"] * 7))
@@ -95,7 +97,7 @@ class Spider(_Spider):
 
                 result = tag.text.split()
                 pmid_list.extend(result)
-                # 若仅找到一个PMID则停止循环
+                # Stop if find only one pmid
                 if len(result) == 1:
                     break
 
@@ -110,7 +112,8 @@ class Spider(_Spider):
 
     async def getPagesInfo(self, index: int, pmid: str):
         web = self.base_url + pmid
-        await asyncio.sleep(index * GET_FREQUENCY)  # 降低访问频率
+        # Decrease access frequency
+        await asyncio.sleep(index * GET_FREQUENCY)
         log.debug(f"Fetching PMID[{pmid}]")
         try:
             async with self.session.get(web) as html:

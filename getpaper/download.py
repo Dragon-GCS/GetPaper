@@ -15,6 +15,15 @@ from getpaper.config import SCI_DELAY
 log = logging.getLogger("GetPaper")
 
 def checkFilename(filename: str, suffix: str = ".pdf"):
+    """
+    Check whether the filename contains invalid character.
+    Add suffix automatically if filname doesn't ends with specified suffix.
+    Args:
+        filename: filename to save, not recommended contains path
+        suffix: the specified string at the end of filename
+    Returns:
+        returns: filename without invalid character and ends with specified suffix
+    """
     valid_name = re.sub(r"[:?/*|<>\"\\]", "", filename).rstrip(".")
     if not valid_name.endswith(suffix):
         valid_name += suffix
@@ -39,7 +48,13 @@ class SciHubDownloader:
         self.url = url
 
     async def _download(self, doi: str, filename: str, index: int = 0) -> None:
-        """Download and save to file"""
+        """
+        From Sci-Hub download pdf by doi.
+        Args:
+            doi: the doi of paper, from search result.
+            filename: name of downloaded pdf file.
+            index: index of doi, download will be delayed by index * SCI_DELAY second.
+        """
 
         url = f"{self.url}/{doi}"
         content: bytes = b''
@@ -85,7 +100,12 @@ class SciHubDownloader:
 
     @AsyncFunc
     async def download(self, doi: str, filename: str = "") -> None:
-        """Download paper by doi from sci-hub, and save as filename"""
+        """
+        Download single paper from sci-hub by doi and save to filename.
+        Args:
+            doi: the doi of paper, from search result.
+            filename: name of downloaded pdf file.
+        """
 
         if getattr(self, "session", None) is None:
             self.session = getSession()
@@ -101,7 +121,13 @@ class SciHubDownloader:
     async def multiDownload(self, details: Sequence[Sequence[str]], 
                             monitor: Queue = None,
                             target_dir: str = "") -> None:
-        """Download all doi in details, save to file with title as name"""
+        """
+        Download multiple paper from sci-hub by doi, filename defaults to title.
+        Args:
+            details: A sequences include all search result, title is details[0], doi is details[-2]
+            monitor：A Queue for monitoring the download progress by monitor.qsize() / monitor.max_size
+            target_dir: Directory to save all PDFs.
+        """
 
         self.monitor = monitor
 

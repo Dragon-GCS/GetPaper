@@ -1,5 +1,6 @@
 import logging
 import tkinter as tk
+from tkinter.constants import NO
 from tkinter.filedialog import asksaveasfilename
 from tkinter.ttk import Button, Combobox, Frame, Scrollbar
 from typing import Sequence
@@ -16,22 +17,41 @@ class TextFrame(Frame):
         super().__init__(*args, **kwargs)
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 1)
-        # 结果显示区
+        # Result display frame
         self.text = tk.Text(self, font = FONT)
         self.text.grid(row = 0, column = 0, sticky = tk.NSEW)
-        # 添加垂直滚动条
+        # Add vertical scroll bar
         vbar = Scrollbar(self, orient = 'vertical', command = self.text.yview)
         self.text.configure(yscrollcommand = vbar.set)
         vbar.grid(row = 0, column = 1, sticky = tk.NS)
 
     def enShow(self, detail: Sequence[str]) -> None:
+        """
+        Show the infomation of paper with origin language on en_text_frame
+        Args:
+            detail: Paper's origin infomation, from search result
+        """
+
         self._show(detail, RESULT_LIST_EN)
 
     def cnShow(self, detail: Sequence[str]) -> None:
+        """
+        Show the infomation of paper with Chinese on cn_text_frame
+        Args:
+            detail: Paper's infomation that title and abstract were tanslated.
+        """
+
         self._show(detail, RESULT_LIST_CN)
 
-    def _show(self, detail: Sequence[str], header: Sequence[str]):
-        """Output detail as format"""
+    def _show(self, detail: Sequence[str], header: Sequence[str]) -> None:
+        """
+        Print the detail and corresponding header on the text frame
+        Args:
+            detail: Paper's detail infomation
+                    Include title, authors, date, publication, abstract, doi, web_url.
+            header: Headers corresponding to the detail
+        """
+
         # https://tkdocs.com/shipman/text-index.html
         self.text.delete('1.0', "insert")
         for i, item in enumerate(header):
@@ -44,54 +64,62 @@ class DetailWindow(tk.Toplevel):
         super().__init__()
         self.title = "文章详情"
         self.option_add("*Font", FONT)
-        self.columnconfigure(0, weight = 1)  # 随宽度变化
-        self.rowconfigure(1, weight = 1)  # 随高度变化
+        self.columnconfigure(0, weight = 1) # Column 0 changes with window's weight
+        self.rowconfigure(1, weight = 1)    # Row 1 changes with window's height
         self.geometry("1080x720")
         self.downloader = downloader
         self.detail = detail
 
-        ################# 功能区 #################
+        ################# Functional Frame #################
         self.frame = Frame(self, **FRAME_STYLE)
         for i in range(8):
             self.frame.columnconfigure(i + 1, weight = 1)
         self.frame.grid(sticky = tk.EW)
-        # 下载按钮
+        # Download Button
         self.download_button = Button(self.frame, text = "下载", command = self.download)
         self.download_button.grid(row = 0)
-        # 提示条
+        # Progress Bar
         self.tip = TipFrame(self.frame)
-        # 翻译按钮
+        # Translate Button
         self.trans_button = Button(self.frame, text = "翻译", command = self.translate)
         self.trans_button.grid(row = 0, column = 8, sticky = tk.E)
-        # 选择翻译引擎
+        # Choose the translator
         self.choose = Combobox(self.frame, values = translator_list, state = "readonly")
         self.choose.current(0)
         self.choose.grid(row = 0, column = 9, sticky = tk.W)
         self.choose.bind('<<ComboboxSelected>>', self.chooseTranslator)
         self.chooseTranslator()
 
-        ################# 文章详情 #################
+        ################# Detail Text Frame #################
         self.detail_frame = Frame(self, **FRAME_STYLE)
         self.detail_frame.columnconfigure(0, weight = 1)
         self.detail_frame.columnconfigure(1, weight = 1)
         self.detail_frame.rowconfigure(0, weight = 1)
         self.detail_frame.grid(row = 1, sticky = tk.NSEW)
-        # 英文详情
+        # Origin language detail
         self.en_text = TextFrame(self.detail_frame)
-        self.en_text.text.config(font = ("Times", 14))  # 设置英文字体
+        self.en_text.text.config(font = ("Times", 14))  # Set English font
         self.en_text.grid(row = 0, column = 0, sticky = tk.NSEW)
         self.en_text.enShow(self.detail)
-        # 翻译结果 
+        # Perform the translation result 
         self.ch_text = TextFrame(self.detail_frame)
         self.ch_text.grid(row = 0, column = 1, sticky = tk.NSEW)
 
     def chooseTranslator(self, event = None):
+        """
+        Choose a translator by ComboBox
+        Args:
+            event: Placeholder
+        """
+
         self.translator = getTranslator(self.choose.get())
         self.choose.selection_clear()
         log.info(f"choose translator: {self.choose.get()}")
 
     @startThread("Download_Paper")
     def download(self) -> None:
+        """Download this paper"""
+
         filename = asksaveasfilename(parent = self, 
                                      defaultextension = ".pdf", 
                                      filetypes = [("pdf", ".pdf")])
@@ -116,9 +144,11 @@ class DetailWindow(tk.Toplevel):
 
     @startThread("Translate")
     def translate(self) -> None:
+        """Translate this paper's title and abstract by selected translator"""
+
         log.info(f"translate by : {self.translator.__module__}",)
         self.trans_button.state(["disabled"])
-        # 显示Tip bar
+        # Show TipBar
         self.tip.grid(row = 0, column = 5, columnspan = 3, sticky = tk.EW)
         self.tip.setTip("翻译中...")
         self.tip.bar.start()
@@ -131,6 +161,6 @@ class DetailWindow(tk.Toplevel):
             self.ch_text.cnShow([str(e)])
         finally:
             self.tip.bar.stop()
-            # 关闭Tip bar
+            # Close TipBar
             self.tip.grid_remove()
             self.trans_button.state(["!disabled"])

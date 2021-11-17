@@ -23,16 +23,16 @@ class Spider(_Spider):
                   sorting: str = "") -> Dict[str, Any]:
         data = {"AllField": keyword,
                 "startPage": 0}
-        # 指定搜索作者
+        # Parsing author field
         if author:
             data["Contrib"] = author
-        # 处理搜索时间范围
+        # Paring search time range field
         if start_year:
             data["BeforeYear"] = start_year
         if end_year:
             data["AfterYear"] = end_year
-        # journal需要从ACS指定的期刊中选择，故此处不做处理
-        # 处理结果排序
+        # Journal/publication need to be selected from the range specified by ACS, so pass
+        # Parsing result sort order
         if sorting.startswith("日期"):
             data["sortBy"] = "Earliest"
         if sorting.endswith("逆序"):
@@ -42,9 +42,6 @@ class Spider(_Spider):
 
     @AsyncFunc
     async def getTotalPaperNum(self):
-        """
-        获取查找文献的总数
-        """
         self.data["startPage"] = 0
         self.data["pageSize"] = 20
         try:
@@ -61,9 +58,17 @@ class Spider(_Spider):
             return f"共找到{total_num}篇"
 
 
-    async def getPagesInfo(self, data, num):
+    async def getPagesInfo(self, data: Dict[str, Any], num: int) -> None:
+        """
+        Get paper's detail on a html
+        Args:
+            data: search data for getting html
+            num: The number of papers to be fetched on a html
+        """
         page = data["startPage"]
-        await asyncio.sleep(page * GET_FREQUENCY)   # 降低访问频率
+        # Decrease access frequency
+        await asyncio.sleep(page * GET_FREQUENCY)
+
         try:
             async with self.session.get(self.base_url, params = data) as response:
                 log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
@@ -77,32 +82,33 @@ class Spider(_Spider):
             contents = iter(bs.find_all(class_ = "issue-item_metadata"))
             for index in range(page * 100, min((page + 1) * 100, num)):
                 content = (next(contents))
-                # 查找标题、doi、web_url
+                # Find titles、doi、web_url
                 title_tag = content.find("h2", class_ = "issue-item_title")
                 title = title_tag.text if title_tag else "No title"
                 doi = title_tag.a["href"].lstrip("/doi/") if title_tag else "No DOI"
                 web = 'https://pubs.acs.org' + title_tag.a["href"] if title_tag else "No URL"
-                # 查找作者名单
+                # Find authors list
                 authors = tag.text \
                         if (tag := content.ul) \
                         else "No Authors"
-                # 查找发表日期
+                # Find publish date
                 date = tag.text \
                     if (tag := content.find(class_ = 'pub-date-value')) \
                     else "No Publicate Date"
-                # 查找文献摘要
+                # Find abstracts
                 abstract = tag.text \
                         if (tag := content.find("span", class_ = 'hlFld-Abstract')) \
                         else "No Abstract"
 
-                # 查找发表期刊，chapter 与 article 格式不同
+                # find publications
+                # Chapter and article have different format
                 if content.parent.find(class_ = 'infoType').string == 'Chapter':
                     publication = re.sub(r'\s+', ' ', content.find(class_ ='issue-item_chapter').text)
                 else:
                     publication = tag.text \
                                 if (tag := content.find(class_ = 'issue-item_jour-name')) \
                                 else "No Publication"
-                # 保存数据
+                # Save data to result queue
                 self.result_queue.put((index,
                                     (title, authors, date, publication, abstract, doi, web)))
 
