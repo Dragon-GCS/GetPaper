@@ -10,7 +10,7 @@ from getpaper.utils import AsyncFunc, TipException, getSession
 
 log = logging.getLogger("GetPaper")
 
-def make_md5(s, encoding = 'utf-8'):
+def make_md5(s, encoding = "utf-8"):
     return md5(s.encode(encoding)).hexdigest()
 
 
@@ -22,7 +22,7 @@ class Translator:
 
     def __init__(self) -> None:
         try:
-            f = importlib.resources.open_text('getpaper.translator', '_api_info.json')
+            f = importlib.resources.open_text("getpaper.translator", "_api_info.json")
             info = json.load(f)
         except FileNotFoundError:
             log.info("未找到密钥文件")
@@ -32,12 +32,12 @@ class Translator:
             self.appid = info["百度翻译"]["appid"]
         self.salt = str(randint(32768, 65536))
         self.data = {
-                'appid': self.appid,
-                'q'    : "",
-                'from' : "auto",
-                'to'   : "zh",
-                'salt' : self.salt,
-                'sign' : ""
+                "appid": self.appid,
+                "q"    : "",
+                "from" : "auto",
+                "to"   : "zh",
+                "salt" : self.salt,
+                "sign" : ""
         }
 
     def process(self, query: str) -> Dict[str, Any]:
@@ -73,6 +73,6 @@ class Translator:
         return "\n".join([item["dst"] for item in result["trans_result"]])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     trans = Translator()
     print(trans.translate("Test\nstring second \nstring"))

@@ -21,7 +21,7 @@ class TextFrame(Frame):
         self.text = tk.Text(self, font = FONT)
         self.text.grid(row = 0, column = 0, sticky = tk.NSEW)
         # Add vertical scroll bar
-        vbar = Scrollbar(self, orient = 'vertical', command = self.text.yview)
+        vbar = Scrollbar(self, orient = "vertical", command = self.text.yview)
         self.text.configure(yscrollcommand = vbar.set)
         vbar.grid(row = 0, column = 1, sticky = tk.NS)
 
@@ -53,7 +53,7 @@ class TextFrame(Frame):
         """
 
         # https://tkdocs.com/shipman/text-index.html
-        self.text.delete('1.0', "insert")
+        self.text.delete("1.0", "insert")
         for i, item in enumerate(header):
             self.text.insert("insert", item)
             self.text.insert("insert", f"{detail[i]}\n\n")
@@ -87,7 +87,7 @@ class DetailWindow(tk.Toplevel):
         self.choose = Combobox(self.frame, values = translator_list, state = "readonly")
         self.choose.current(0)
         self.choose.grid(row = 0, column = 9, sticky = tk.W)
-        self.choose.bind('<<ComboboxSelected>>', self.chooseTranslator)
+        self.choose.bind("<<ComboboxSelected>>", self.chooseTranslator)
         self.chooseTranslator()
 
         ################# Detail Text Frame #################

@@ -62,12 +62,12 @@ class Spider(_Spider):
             log.info("PubMed Spider Get Total Num Time Out")
             raise TipException("连接超时")
         else:
-            bs = BeautifulSoup(html, 'lxml')
+            bs = BeautifulSoup(html, "lxml")
             if bs.find("span", class_ = "single-result-redirect-message"):
                 total_num = "1"
             else:
                 total_num = tag.text.replace(",", "") \
-                    if (tag := bs.find("div", class_ = 'results-amount').span) \
+                    if (tag := bs.find("div", class_ = "results-amount").span) \
                     else "0"
             return f"共找到{total_num}篇"
 
@@ -88,9 +88,9 @@ class Spider(_Spider):
                     log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
                     html = await response.text()
 
-                bs = BeautifulSoup(html, 'lxml')
+                bs = BeautifulSoup(html, "lxml")
                 # If no pmid was find, modify result.max_size to 1 for stop monitoring.
-                if not (tag := bs.find("pre", class_ = 'search-results-chunk')):
+                if not (tag := bs.find("pre", class_ = "search-results-chunk")):
                     self.result_queue.maxsize = 1
                     self.result_queue.put((0, ["Not found any papers"] * 7))
                     raise TipException("未找到相关文献")
@@ -129,11 +129,11 @@ class Spider(_Spider):
                 else "No Title"
 
             date = tag.text \
-                if (tag := content.find("span", class_ = 'cit')) \
+                if (tag := content.find("span", class_ = "cit")) \
                 else "No date"
 
             publication = re.sub(r"\s+", "", tag.text) \
-                if (tag := content.find("button", id = 'full-view-journal-trigger')) \
+                if (tag := content.find("button", id = "full-view-journal-trigger")) \
                 else "No publication"
 
             authors = "; ".join({author.a.text \
@@ -145,11 +145,11 @@ class Spider(_Spider):
                 else "No Abstract"
 
             doi = re.sub(r"\s+", "", tag.text) \
-                if (tag := content.find("a", attrs = {'data-ga-action': 'DOI'})) \
+                if (tag := content.find("a", attrs = {"data-ga-action": "DOI"})) \
                 else ""
 
-            if tag := content.find(class_ = 'full-text-links-list'):
-                web = tag.a['href']
+            if tag := content.find(class_ = "full-text-links-list"):
+                web = tag.a["href"]
         finally:
             self.result_queue.put((index,
                                    (title, authors, date, publication, abstract, doi, web)))
@@ -175,7 +175,7 @@ class Spider(_Spider):
                 del self.session
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pubmed = Spider(keyword = "crispr",
                     start_year = "2010",
                     end_year = "2020",

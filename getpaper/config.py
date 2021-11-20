@@ -16,8 +16,8 @@ else:
          if not translator.name.startswith("_")]
 
 
-HEADER = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                        'Chrome/80.0.3987.132 Safari/537.36'}
+HEADER = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/80.0.3987.132 Safari/537.36"}
 
 TIMEOUT = 15        # Global AsyncClient timeout
 TIP_REFRESH = 0.2   # MainFrame's tip bar refresh frequency
@@ -32,3 +32,5 @@ SORTED_BY = ("相关性", "日期", "日期逆序")
 # For Detail_Frame to show result detail
 RESULT_LIST_EN = ["Title:\n", "Authors:\n", "Date:\t", "Publication:\t", "Abstract:\n", "doi:\t", "Url:\t"]
 RESULT_LIST_CN = ["标题:\n", "作者:\n", "日期:\t", "期刊:\t", "摘要:\n", "doi:\t", "网址:\t"]
+
+PROJECT_URL = "https://gitee.com/Dragon-GCS/GetPaper"

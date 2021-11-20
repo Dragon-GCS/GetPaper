@@ -41,15 +41,15 @@ class MainFrame(Frame):
                 getattr(self, f"row_{row + 1}").columnconfigure(i + 1, weight = 1)
 
         ###################### Row 1st start ######################
-        Label(self.row_1, text = '查询数据库：').grid(row = 0, column = 0, sticky = tk.E)
+        Label(self.row_1, text = "查询数据库：").grid(row = 0, column = 0, sticky = tk.E)
         # Choose a database to search
         self.engine = Combobox(self.row_1, values = spider_list, state = "readonly")
         self.spider = None
         # Bind a function which can remove the ugly background after select
-        self.engine.bind('<<ComboboxSelected>>', lambda e: self.engine.selection_clear())
+        self.engine.bind("<<ComboboxSelected>>", lambda e: self.engine.selection_clear())
         self.engine.grid(row = 0, column = 1, sticky = tk.W)
         # Available url of Sci-Hub
-        Label(self.row_1, text = "如需下载文献请在此输入可用的SciHub网址：https：//").grid(row = 0, column = 20, sticky = 'e')
+        Label(self.row_1, text = "如需下载文献请在此输入可用的SciHub网址：https：//").grid(row = 0, column = 20, sticky = "e")
         self.scihub_url = Entry(self.row_1)
         self.scihub_url.insert(0, DEFAULT_SCI_HUB_URL)
         self.scihub_url.grid(row = 0, column = 21, sticky = tk.W)
@@ -84,7 +84,7 @@ class MainFrame(Frame):
         Label(self.row_3, text = "排序方式").grid(row = 0, column = 20, sticky = tk.E)
         self.sorting = Combobox(self.row_3, values = SORTED_BY, state = "readonly")
         self.sorting.current(0)
-        self.sorting.bind('<<ComboboxSelected>>', lambda e: self.sorting.selection_clear())
+        self.sorting.bind("<<ComboboxSelected>>", lambda e: self.sorting.selection_clear())
         self.sorting.grid(row = 0, column = 21, sticky = tk.W)
         ####################### Row 3rd end #######################
 
@@ -135,6 +135,7 @@ class MainFrame(Frame):
 
         self.download_button.state(["disabled"])
         self.tip.setTip("准备中...")
+        result = PriorityQueue()
         try:
             num = int(self.num.get())
             if num < 1:
@@ -142,7 +143,7 @@ class MainFrame(Frame):
                 return
             # create a Queue to store result
             log.info(f"Fetch num: {num}")
-            result = PriorityQueue(num)
+            result.maxsize = num
             # Start task on new thread 
             # tip_set function for catching TipException show on GUI
             MyThread(tip_set = self.tip.setTip,
@@ -167,46 +168,6 @@ class MainFrame(Frame):
             finally:
                 self.download_button.state(["!disabled"])
                 self.tip.setTip(f"抓取完成， 共{size}篇")
-            
-
-    @startThread("DownloadPapers")
-    def downloadAll(self, dir_name: str) -> None:
-        """Download all paper's PDFs in search result"""
-
-        self.tip.setTip("准备下载中...")
-
-        try:
-            # create a queue for monitor progress of download
-            monitor = Queue(len(self.result))
-            downloader = SciHubDownloader(self.scihub_url.get())
-            MyThread(tip_set = self.tip.setTip,
-                     target = downloader.multiDownload,
-                     args = (self.result, monitor, dir_name),
-                     name = "Multi-Download").start()
-
-            self.monitor(monitor, len(self.result))
-
-        finally:
-            self.tip.setTip("下载结束")
-            self.tip.bar.stop()
-
-    @startThread("Save_File")
-    def saveToFile(self, filename: str) -> None:
-        """
-        Save search result to csv file
-        Args:
-            filename: Name of csv file to save
-        """
-
-        try:
-            with open(filename, "w", newline = "", encoding = "utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow([s.strip(":\n") for s in RESULT_LIST_EN])
-                writer.writerows(self.result)
-            self.tip.setTip("保存成功")
-        except Exception as e:
-            log.error(f"Save {filename} failed: ", e)
-            self.tip.setTip("保存失败")
 
     def monitor(self, monitor_queue: Queue, total: int) -> None:
         """

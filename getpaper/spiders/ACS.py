@@ -13,7 +13,7 @@ GET_FREQUENCY = 0.05
 log = logging.getLogger("GetPaper")
 
 class Spider(_Spider):
-    base_url = 'https://pubs.acs.org/action/doSearch'
+    base_url = "https://pubs.acs.org/action/doSearch"
 
     def parseData(self, keyword: str,
                   start_year: str = "",
@@ -53,8 +53,8 @@ class Spider(_Spider):
             log.info("ACS Spider Get Total Num Time Out")
             raise TipException("连接超时")
         else:
-            bs = BeautifulSoup(html, 'lxml')
-            total_num = bs.find("span", attrs = {'class': 'result__count'}).string  # type:ignore
+            bs = BeautifulSoup(html, "lxml")
+            total_num = bs.find("span", attrs = {"class": "result__count"}).string  # type:ignore
             return f"共找到{total_num}篇"
 
 
@@ -78,7 +78,7 @@ class Spider(_Spider):
             for index in range(page * 100, min((page + 1) * 100, num)):
                 self.result_queue.put((index, ["Error"] * 6))
         else:
-            bs = BeautifulSoup(html, 'lxml')
+            bs = BeautifulSoup(html, "lxml")
             contents = iter(bs.find_all(class_ = "issue-item_metadata"))
             for index in range(page * 100, min((page + 1) * 100, num)):
                 content = (next(contents))
@@ -86,27 +86,27 @@ class Spider(_Spider):
                 title_tag = content.find("h2", class_ = "issue-item_title")
                 title = title_tag.text if title_tag else "No title"
                 doi = title_tag.a["href"].lstrip("/doi/") if title_tag else "No DOI"
-                web = 'https://pubs.acs.org' + title_tag.a["href"] if title_tag else "No URL"
+                web = "https://pubs.acs.org" + title_tag.a["href"] if title_tag else "No URL"
                 # Find authors list
                 authors = tag.text \
                         if (tag := content.ul) \
                         else "No Authors"
                 # Find publish date
                 date = tag.text \
-                    if (tag := content.find(class_ = 'pub-date-value')) \
+                    if (tag := content.find(class_ = "pub-date-value")) \
                     else "No Publicate Date"
                 # Find abstracts
                 abstract = tag.text \
-                        if (tag := content.find("span", class_ = 'hlFld-Abstract')) \
+                        if (tag := content.find("span", class_ = "hlFld-Abstract")) \
                         else "No Abstract"
 
                 # find publications
                 # Chapter and article have different format
-                if content.parent.find(class_ = 'infoType').string == 'Chapter':
-                    publication = re.sub(r'\s+', ' ', content.find(class_ ='issue-item_chapter').text)
+                if content.parent.find(class_ = "infoType").string == "Chapter":
+                    publication = re.sub(r"\s+", " ", content.find(class_ ="issue-item_chapter").text)
                 else:
                     publication = tag.text \
-                                if (tag := content.find(class_ = 'issue-item_jour-name')) \
+                                if (tag := content.find(class_ = "issue-item_jour-name")) \
                                 else "No Publication"
                 # Save data to result queue
                 self.result_queue.put((index,
@@ -135,7 +135,7 @@ class Spider(_Spider):
                 del self.session
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     acs = Spider(keyword = "human",
                 start_year = "2010",
                 end_year = "2020",

@@ -59,6 +59,7 @@ class SciHubDownloader:
         url = f"{self.url}/{doi}"
         content: bytes = b''
         flag: bool = False # success to find pdf url or not
+        base, filename = os.path.split(filename)
 
         log.debug(f"Downloading doi: {doi}")
         await asyncio.sleep(index * SCI_DELAY)  # add delay
@@ -78,19 +79,23 @@ class SciHubDownloader:
                         break
 
                 except asyncio.exceptions.TimeoutError:
+                    filename = "Timeout_" + filename
+                    content = f"Connect timeout\n{filename}\nURL: {url}".encode("utf-8")
                     log.debug(f"Connect timeout\nURL: {url}")
-                    content = f"Connect timeout\nURL: {url}".encode("utf-8")
 
                 except Exception as e:
+                    content = f"Unknown Error\n{filename}\nURL: {url}".encode("utf-8")
+                    filename = "ERROR_" + filename
                     log.error(f"Error URL: {url} ", e)
-                    content = f"Unknown Error\nURL: {url}".encode("utf-8")
+                    
         else:
             content = f"{filename.rstrip('.pdf')}\nNot found doi".encode("utf-8")
+            filename = "NotFound_" + filename
 
         if not flag:
-            filename += ".txt"
+            filename = filename.replace("pdf", "txt")
         
-        with open(filename, "wb") as f:
+        with open(os.path.join(base, filename), "wb") as f:
             f.write(content)
 
         if getattr(self, "monitor", None) is not None:
@@ -152,7 +157,7 @@ class SciHubDownloader:
                 del self.session
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     data = [["A hierarchical Bayesian approach for detecting global microbiome associations", "Authors", "Date",
              "Publication", "Abstract", "10.1126/science.2470152", "Url"],
             ["Risk factors for heat-related illnesses during the Hajj mass gathering: an expert review.", "Authors",
