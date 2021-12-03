@@ -22,8 +22,7 @@ class Translator:
 
     def __init__(self) -> None:
         try:
-            f = importlib.resources.open_text("getpaper.translator", "_api_info.json")
-            info = json.load(f)
+            info = json.loads(importlib.resources.read_text("getpaper.translator", "_api_info.json"))
         except FileNotFoundError:
             log.info("未找到密钥文件")
             raise TipException("未找到密钥文件")
