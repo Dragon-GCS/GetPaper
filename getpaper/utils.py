@@ -10,7 +10,7 @@ from typing import Any, Callable, List, Optional
 
 from aiohttp import ClientSession, CookieJar
 
-from getpaper.config import HEADER, TIMEOUT
+from getpaper.config import CLIENT_TIMEOUT, HEADER
 
 log = logging.getLogger("GetPaper")
 
@@ -50,7 +50,7 @@ def getSession() -> ClientSession:
     """Create a async Http session by aiohttp"""
 
     return ClientSession(headers = HEADER,
-                         read_timeout = TIMEOUT,
+                         read_timeout = CLIENT_TIMEOUT,
                          cookie_jar = CookieJar(unsafe = True))
 
 

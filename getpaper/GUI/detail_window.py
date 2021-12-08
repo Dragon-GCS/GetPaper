@@ -1,6 +1,5 @@
 import logging
 import tkinter as tk
-from tkinter.constants import NO
 from tkinter.filedialog import asksaveasfilename
 from tkinter.ttk import Button, Combobox, Frame, Scrollbar
 from typing import Sequence

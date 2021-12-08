@@ -1,13 +1,11 @@
-import csv
 import logging
 import time
 import tkinter as tk
 from queue import PriorityQueue, Queue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
 
-from getpaper.config import (DEFAULT_SCI_HUB_URL, RESULT_LIST_EN, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
-from getpaper.download import SciHubDownloader
-from getpaper.utils import MyThread, TipException, setSpider, getQueueData, startThread
+from getpaper.config import (DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
+from getpaper.utils import MyThread, TipException, getQueueData, setSpider, startThread
 
 log = logging.getLogger("GetPaper")
 

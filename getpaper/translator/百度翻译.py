@@ -1,7 +1,7 @@
+import importlib.resources
 import json
 import logging
 import time
-import importlib.resources
 from hashlib import md5
 from random import randint
 from typing import Any, Dict

@@ -1,8 +1,5 @@
 import logging
-import os
-import tkinter as tk
 from tkinter import ttk
-from tkinter.filedialog import askdirectory, asksaveasfilename
 
 from ttkbootstrap import Style
 

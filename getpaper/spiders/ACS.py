@@ -1,15 +1,15 @@
 import asyncio
 import logging
-from queue import PriorityQueue
 import re
+from queue import PriorityQueue
 from typing import Any, Dict
 
 from bs4 import BeautifulSoup
 
 from getpaper.spiders._spider import _Spider
-from getpaper.utils import AsyncFunc, getSession, TipException
+from getpaper.utils import AsyncFunc, TipException, getSession
 
-GET_FREQUENCY = 0.05
+GET_FREQUENCY = 0.05    # frequency to fetch paper
 log = logging.getLogger("GetPaper")
 
 class Spider(_Spider):

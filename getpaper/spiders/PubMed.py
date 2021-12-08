@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, TipException, getSession
 
-GET_FREQUENCY = 0.1
+GET_FREQUENCY = 0.1 # frequency to fetch paper
 log = logging.getLogger("GetPaper")
 
 class Spider(_Spider):

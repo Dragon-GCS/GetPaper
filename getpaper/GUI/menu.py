@@ -2,15 +2,15 @@ import csv
 import logging
 import os
 import tkinter as tk
-from typing import List, Optional
 import webbrowser
 from queue import Queue
-from tkinter.filedialog import askdirectory, asksaveasfilename, askopenfile
+from tkinter.filedialog import askdirectory, askopenfile, asksaveasfilename
+from typing import List, Optional
 
 from getpaper.GUI.main_frame import MainFrame
-from getpaper.config import RESULT_LIST_EN, PROJECT_URL
+from getpaper.config import PROJECT_URL, RESULT_LIST_EN
 from getpaper.download import SciHubDownloader
-from getpaper.utils import startThread, MyThread
+from getpaper.utils import MyThread, startThread
 
 log = logging.getLogger("GetPaper")
 
@@ -57,7 +57,7 @@ class MenuBar(tk.Menu):
                 self.tip.setTip("保存失败")
 
     @startThread("DownloadPapers")
-    def downloadAll(self, details:Optional[List[str]] = None) -> None:
+    def downloadAll(self, details: List[List[str]] = None) -> None:
         """
         Using SciHubDownloader to get PDFs of all results to specified directory
         Args:
@@ -79,7 +79,7 @@ class MenuBar(tk.Menu):
 
             try:
                 # create a queue for monitor progress of download
-                monitor_queue = Queue(len(details))
+                monitor_queue = Queue(maxsize = len(details))
                 downloader = SciHubDownloader(self.main_frame.scihub_url.get())
                 MyThread(tip_set = self.tip.setTip,
                         target = downloader.multiDownload,
@@ -106,10 +106,11 @@ class MenuBar(tk.Menu):
             log.info(f"Open file: {file.name}\nNumber of lines:{len(dois)}")
             
             for doi in dois:
+                if not doi:
+                    continue
                 if not doi.startswith("10."):
                     # all valid doi start with "10."
                     continue
-                doi = doi.strip()
                 # create a detail list, detail[0] = title(as filename), detail[-2] = doi
                 details.append([doi.strip(), None, doi.strip(), None])
 

@@ -9,8 +9,8 @@ from typing import Protocol, Sequence
 import aiohttp
 from bs4 import BeautifulSoup
 
-from getpaper.utils import AsyncFunc, getSession
 from getpaper.config import SCI_DELAY
+from getpaper.utils import AsyncFunc, getSession
 
 log = logging.getLogger("GetPaper")
 
@@ -79,7 +79,8 @@ class SciHubDownloader:
                         break
 
                 except asyncio.exceptions.TimeoutError:
-                    filename = "Timeout_" + filename
+                    if not filename.startswith("Timeout_"):
+                        filename = "Timeout_" + filename
                     content = f"Connect timeout\n{filename}\nURL: {url}".encode("utf-8")
                     log.debug(f"Connect timeout\nURL: {url}")
 
