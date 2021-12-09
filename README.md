@@ -120,8 +120,13 @@
 * api相关数据保存在`getpaper/translator/_api_info.json`中，推荐使用以下方法读取该json文件，该方法能够在打包后正常读取文件。
 
 ```python
+  import importlib.resources
+  # 第一种
   f = importlib.resources.open_text('getpaper.translator', '_api_info.json')
   info = json.load(f)
+  # 第二种
+  txt = importlib.resources.read_text("getpaper.translator", "_api_info.json")
+  info = json.loads(txt)
 ```
 
 * 实现`translate(self, detail: str) -> str`方法，文章的title和abstract会分别调用此方法进行翻译，返回的字符串会通过`str()`转换后显示到文本框内。
