@@ -17,7 +17,7 @@ class TextFrame(Frame):
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 1)
         # Result display frame
-        self.text = tk.Text(self, font = FONT)
+        self.text = tk.Text(self, font = FONT, wrap = "word")
         self.text.grid(row = 0, column = 0, sticky = tk.NSEW)
         # Add vertical scroll bar
         vbar = Scrollbar(self, orient = "vertical", command = self.text.yview)
