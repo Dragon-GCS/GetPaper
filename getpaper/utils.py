@@ -93,7 +93,7 @@ def setSpider(func: Callable[..., Any]):
         if not self.engine.get():
             self.tip.setTip("未选择搜索引擎")
             return
-        else:
+        elif not getattr(self, "spider"):
             self.spider = getSpider(name = self.engine.get(),
                                     keyword = self.keyword.get(),
                                     start_year = self.start_year.get(),
@@ -101,6 +101,7 @@ def setSpider(func: Callable[..., Any]):
                                     author = self.author.get(),
                                     journal = self.journal.get(),
                                     sorting = self.sorting.get())
+            log.info(f"Init this spdier: {self.engine.get()}")
         func(self, *args, **kwargs)
 
     return wrapped
