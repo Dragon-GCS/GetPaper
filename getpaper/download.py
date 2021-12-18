@@ -60,6 +60,7 @@ class SciHubDownloader:
         content: bytes = b''
         flag: bool = False # success to find pdf url or not
         base, filename = os.path.split(filename)
+        error_name = filename
 
         log.debug(f"Downloading doi: {doi}")
         await asyncio.sleep(index * SCI_DELAY)  # add delay
@@ -79,23 +80,27 @@ class SciHubDownloader:
                         break
 
                 except asyncio.exceptions.TimeoutError:
-                    if not filename.startswith("Timeout_"):
-                        filename = "Timeout_" + filename
                     content = f"Connect timeout\n{filename}\nURL: {url}".encode("utf-8")
                     log.debug(f"Connect timeout\nURL: {url}")
 
+                    if not error_name.startswith("Timeout_"):
+                        error_name = "Timeout_" + filename
+
                 except Exception as e:
                     content = f"Unknown Error\n{filename}\nURL: {url}".encode("utf-8")
-                    filename = "ERROR_" + filename
                     log.error(f"Error URL: {url} ", e)
-                    
+
+                    if not error_name.startswith("ERROR_"):
+                        error_name = "ERROR_" + filename
+
         else:
             content = f"{filename.rstrip('.pdf')}\nNot found doi".encode("utf-8")
-            filename = "NotFound_" + filename
+            error_name = "NotFound_" + error_name
 
         if not flag:
-            filename = filename.replace("pdf", "txt")
-        
+            # use error name to save file
+            filename = error_name.replace(".pdf", ".txt")
+
         with open(os.path.join(base, filename), "wb") as f:
             f.write(content)
 
