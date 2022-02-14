@@ -1,12 +1,11 @@
 import asyncio
 import logging
-import sys
 from datetime import datetime
 from functools import wraps
 from importlib import import_module
 from queue import PriorityQueue
 from threading import Thread
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from aiohttp import ClientSession, CookieJar
 
@@ -59,9 +58,6 @@ def AsyncFunc(func: Callable[..., Any]):
 
     @wraps(func)
     def wrapped(*args, **kwargs):
-        # run below code to avoid RunTimeError raised by aiohttp's on windows
-        if sys.platform.startswith("win"):
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         return asyncio.run(func(*args, **kwargs))
 
     return wrapped
@@ -93,7 +89,7 @@ def setSpider(func: Callable[..., Any]):
         if not self.engine.get():
             self.tip.setTip("未选择搜索引擎")
             return
-        elif not getattr(self, "spider"):
+        else:
             self.spider = getSpider(name = self.engine.get(),
                                     keyword = self.keyword.get(),
                                     start_year = self.start_year.get(),
@@ -122,6 +118,10 @@ def getQueueData(queue: PriorityQueue) -> List[str]:
 
 
 class MyThread(Thread):
+    _target: Callable
+    _args: Tuple
+    _kwargs: Dict
+
     def __init__(self, tip_set: Callable[..., Any], **kwargs) -> None:
         """
         An thread that can catch the exception in the target and display on GUI, save returns of target.
@@ -130,10 +130,11 @@ class MyThread(Thread):
         """
         super().__init__(**kwargs)
         self.tip_set = tip_set
+        self.result = None
 
     def run(self) -> None:
         """Overwrite self.run() for catching the TipException and show on Tipbar"""
-        
+
         try:
             self.result = self._target(*self._args, **self._kwargs) \
                 if self._target else None

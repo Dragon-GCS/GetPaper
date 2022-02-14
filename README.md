@@ -1,6 +1,4 @@
-
-
-## GetPaper v2.0
+# GetPaper v2.0
 
 基于Sci-Hub的文献下载器，输入关键词后即可在指定数据库中爬取所需文献。
 ![GUI](GUI.jpg)
@@ -11,15 +9,17 @@
 * 增加翻译功能接口，可添加其他的翻译源，目前使用的是百度翻译Api。
 * 通过Sci-Hub下载指定文献或所有爬取结果的pdf
 
-### 运行方法
+## 运行方法
 
 项目已打包为exe文件，[下载](https://github.com/Dragon-GCS/GetPaper/releases/download/v2.0/GetPaper.exe)后可直接使用。
 
 运行环境：python3.8+
+
 * 克隆本项目后cd至项目目录
 * 使用`pip install -r requirements.txt`
 * `python main.pyw` 运行项目
 * 如需打包，运行`pyinstaller main.spec`，`main.spec`已配置好相关静态文件。
+
 > 翻译功能需要自行注册百度翻译Api后将个人`appid`与`key`添加到`api_info.json`中。exe可直接使用翻译。
 
 ### 使用方法
@@ -45,6 +45,7 @@
 ├─hook              # 用于pyinstaller打包，用于导入项目中动态导入的模块
 └─main.pyw           # 入口
 ```
+
 ### 爬虫引擎接口
 
 * 在`getpaper/spiders`内添加`name.py`文件后能够被自动识别并在GUI中显示，如需打包为exe文件，则必须在`getpaper/config.py`中`if hasattr(sys, "frozen")`时`spider_list`中添加对应的`<name>`，否则打包后无法识别动态导入的模块。
@@ -110,7 +111,6 @@
     queue.put(index, (title, authors, date, publication, abstract, doi, web))
     ```
 
-
 ### 翻译引擎接口
 
 * 在`getpaper/translator`内添加`name.py`文件后能够被自动识别并在GUI中显示，如需打包为exe文件，则必须在`getpaper/config.py`中`if hasattr(sys, "frozen")`时`translator_list`中添加对应的`<name>`，否则打包后无法识别动态导入的模块。
@@ -158,5 +158,5 @@
 * 使用多线程提高文献信息获取速度
 
 ## 下载地址
-* pyinstaller打包后的exe文件大小为27M，保存在百度网盘[提取码：0u7n](https://pan.baidu.com/s/1NOjpPXyvy3kmJOIpUHXoHg)。
 
+* pyinstaller打包后的exe文件大小为27M，保存在百度网盘[提取码：17q8](https://pan.baidu.com/s/1mBA169eR_jWICnVyRMOw7w)。

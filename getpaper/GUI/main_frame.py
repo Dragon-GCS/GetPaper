@@ -116,7 +116,8 @@ class MainFrame(Frame):
                          **{"name" : f"{self.engine.get()} Get_Num"})
             t. start()
             t.join()
-            self.tip.setTip(t.result)
+            if t.result:
+                self.tip.setTip(t.result)
         except Exception as e:
             log.error(e)
         finally:

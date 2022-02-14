@@ -1,3 +1,9 @@
+import asyncio
+import sys
+# run below code to avoid RunTimeError raised by aiohttp on windows
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import logging
 logging.basicConfig(level=logging.INFO,
                     datefmt = "%H:%M:%S",

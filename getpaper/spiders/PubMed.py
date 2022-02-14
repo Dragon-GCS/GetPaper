@@ -64,7 +64,7 @@ class Spider(_Spider):
                 self.total_num = 1
                 self.single_page_pmid = bs.find("strong", class_ = "current-id").text
             else:
-                total_num = int(tag.text.replace(",", "")) \
+                self.total_num = int(tag.text.replace(",", "")) \
                     if (tag := bs.find("div", class_="results-amount").span) \
                     else 0
             return f"共找到{self.total_num}篇"
