@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter.ttk import Frame, Scrollbar, Treeview
-from typing import Sequence
+from typing import List, Tuple
 
 from getpaper.GUI.detail_window import DetailWindow
 from getpaper.download import SciHubDownloader
@@ -31,7 +31,7 @@ class ResultFrame(Frame):
         # Display detail window by double click
         self.tree.bind('<Double-Button-1>', lambda e: self.showItem())
 
-    def createForm(self, data: Sequence[Sequence[str]]) -> None:
+    def createForm(self, data: List[Tuple[str, ...]]) -> None:
         """
         Display search result on the result form.
         Args:
@@ -50,6 +50,6 @@ class ResultFrame(Frame):
         """The binding function of double click, display detail window."""
 
         detail = self.tree.item(self.tree.selection()[0], "values")
-        sci_url = self.master.children["!mainframe"].scihub_url.get()
+        sci_url = self.master.children["!mainframe"].scihub_url.get()  # type: ignore
         downloader = SciHubDownloader(sci_url)
         DetailWindow(detail, downloader)

@@ -3,6 +3,7 @@ import time
 import tkinter as tk
 from queue import PriorityQueue, Queue
 from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
+from typing import List
 
 from getpaper.config import (DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
 from getpaper.utils import MyThread, TipException, getQueueData, setSpider, startThread
@@ -25,6 +26,7 @@ class TipFrame(Frame):
 
 class MainFrame(Frame):
     spider: _Spider
+    result: List[List[str]]
     def __init__(self, master: tk.Widget, result_frame: tk.Widget, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row = 0, sticky = tk.EW)
@@ -37,7 +39,6 @@ class MainFrame(Frame):
         self.row_3 = Frame(self, **kwargs)
         self.row_4 = Frame(self, **kwargs)
         for row in range(1, 5):
-            setattr(self, f"row_{row}", Frame(self, **kwargs))
             getattr(self, f"row_{row}").grid(row = row, sticky = tk.EW)
             getattr(self, f"row_{row}").rowconfigure(0, weight = 1)
 

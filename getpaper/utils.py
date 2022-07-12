@@ -110,17 +110,17 @@ def setSpider(func: Callable[..., Any]) -> Callable[..., None]:
     return wrapped
 
 
-def getQueueData(queue: PriorityQueue) -> List[str]:
-    """ Sort details in queue by item[0]
+def getQueueData(queue: PriorityQueue[List[str]]) -> List[List[str]]:
+    """Extract data from queue
 
     Args:
         queue: result queue
     Returns:
-        returns: list of sorted details in queue
+        returns: list of data in queue
     """
     result = []
     while not queue.empty():
-        result.append(queue.get()[1])
+        result.append(queue.get())
     return result
 
 
