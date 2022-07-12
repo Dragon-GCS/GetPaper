@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 if hasattr(sys, "frozen"):
-    # add new module name without .py when using pyinstall
+    # add new module name without .py when using pyinstaller
     spider_list = ["ACS", "PubMed"]
     translator_list = ["百度翻译"]
 else:

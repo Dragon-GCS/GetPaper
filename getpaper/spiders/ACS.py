@@ -54,9 +54,11 @@ class Spider(_Spider):
             raise TipException("连接超时")
         else:
             bs = BeautifulSoup(html, "lxml")
-            total_num = bs.find("span", attrs = {"class": "result__count"}).string  # type:ignore
-            return f"共找到{total_num}篇"
 
+            if (total_num := bs.find("span", attrs = {"class": "result__count"})) is None:
+                return f"共找到0篇"
+            else:
+                return f"共找到{total_num.string}篇"
 
     async def getPagesInfo(self, data: Dict[str, Any], num: int) -> None:
         """
@@ -94,7 +96,7 @@ class Spider(_Spider):
                 # Find publish date
                 date = tag.text \
                     if (tag := content.find(class_ = "pub-date-value")) \
-                    else "No Publicate Date"
+                    else "No Publication Date"
                 # Find abstracts
                 abstract = tag.text \
                         if (tag := content.find("span", class_ = "hlFld-Abstract")) \

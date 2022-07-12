@@ -13,14 +13,16 @@ class _Spider(ABC):
     session: ClientSession
     result_queue: PriorityQueue
 
-    def __init__(self, keyword: str = "",
+    def __init__(self,
+                 keyword: str = "",
                  start_year: str = "",
                  end_year: str = "",
                  author: str = "",
                  journal: str = "",
-                 sorting: str = "") -> None:
-        """
-        Base spider
+                 sorting: str = ""
+                 ) -> None:
+        """ Base spider
+
         Args:
             keyword: keyword, split by space
             start_year: default to 1900
@@ -33,19 +35,21 @@ class _Spider(ABC):
             keyword, start_year, end_year, author, journal, sorting)
 
     @abstractmethod
-    def parseData(self, keyword: str,
+    def parseData(self,
+                  keyword: str,
                   start_year: str,
                   end_year: str,
                   author: str,
                   journal: str,
-                  sorting: str) -> Dict[str, Any]:
+                  sorting: str
+                  ) -> Dict[str, Any]:
         """format details to search format"""
         return {}
 
     @abstractmethod
     def getTotalPaperNum(self) -> str:
-        """
-        Get the total number of result
+        """ Get the total number of result
+
         Returns:
             num: number of search result
         """
@@ -53,10 +57,10 @@ class _Spider(ABC):
 
     @abstractmethod
     def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
-        """
-        Get all papers detail
-        Params:
-            queue: a priority queue for storing result and was monitored by GUI thred then feedbacking progess,
+        """ Get all papers detail
+
+        Args:
+            queue: a priority queue for storing result and was monitored by GUI thread then feedback progress,
                 details format is [index, (title, authors, date, publication, abstract, doi, web)]
             num: number of papers to get
         """

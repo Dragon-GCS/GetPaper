@@ -6,6 +6,7 @@ from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spin
 
 from getpaper.config import (DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
 from getpaper.utils import MyThread, TipException, getQueueData, setSpider, startThread
+from getpaper.spiders._spider import _Spider
 
 log = logging.getLogger("GetPaper")
 
@@ -23,6 +24,7 @@ class TipFrame(Frame):
 
 
 class MainFrame(Frame):
+    spider: _Spider
     def __init__(self, master: tk.Widget, result_frame: tk.Widget, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row = 0, sticky = tk.EW)
@@ -30,19 +32,22 @@ class MainFrame(Frame):
         self.columnconfigure(0, weight = 1)
 
         # Create a frame for each rows
-        for row in range(4):
-            setattr(self, f"row_{row + 1}", Frame(self, **kwargs))
-            getattr(self, f"row_{row + 1}").grid(row = row, sticky = tk.EW)
-            getattr(self, f"row_{row + 1}").rowconfigure(0, weight = 1)
+        self.row_1 = Frame(self, **kwargs)
+        self.row_2 = Frame(self, **kwargs)
+        self.row_3 = Frame(self, **kwargs)
+        self.row_4 = Frame(self, **kwargs)
+        for row in range(1, 5):
+            setattr(self, f"row_{row}", Frame(self, **kwargs))
+            getattr(self, f"row_{row}").grid(row = row, sticky = tk.EW)
+            getattr(self, f"row_{row}").rowconfigure(0, weight = 1)
 
             for i in range(20):
-                getattr(self, f"row_{row + 1}").columnconfigure(i + 1, weight = 1)
+                getattr(self, f"row_{row}").columnconfigure(i + 1, weight = 1)
 
         ###################### Row 1st start ######################
         Label(self.row_1, text = "查询数据库：").grid(row = 0, column = 0, sticky = tk.E)
         # Choose a database to search
         self.engine = Combobox(self.row_1, values = spider_list, state = "readonly")
-        self.spider = None
         # Bind a function which can remove the ugly background after select
         self.engine.bind("<<ComboboxSelected>>", lambda e: self.engine.selection_clear())
         self.engine.grid(row = 0, column = 1, sticky = tk.W)
@@ -145,10 +150,11 @@ class MainFrame(Frame):
             result.maxsize = num
             # Start task on new thread 
             # tip_set function for catching TipException show on GUI
-            MyThread(tip_set = self.tip.setTip,
-                     target = self.spider.getAllPapers,
-                     **{"args": (result, num),
-                        "name": f"{self.engine.get()} Fetch"}).start()
+            MyThread(tip_set=self.tip.setTip,
+                     target=self.spider.getAllPapers,
+                     args=(result, num),
+                     name=f"{self.engine.get()} Fetch"
+                     ).start()
 
             self.monitor(result, num)
         except Exception as e:
@@ -163,7 +169,7 @@ class MainFrame(Frame):
                     size = result.qsize()
                     self.result = getQueueData(result)
                     # get item from queue and send all to result frame
-                    self.result_frame.createForm(self.result)
+                    self.result_frame.createForm(self.result)  # type: ignore
             finally:
                 self.download_button.state(["!disabled"])
                 self.tip.setTip(f"抓取完成， 共{size}篇")

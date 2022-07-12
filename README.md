@@ -9,6 +9,8 @@
 * 增加翻译功能接口，可添加其他的翻译源，目前使用的是百度翻译Api。
 * 通过Sci-Hub下载指定文献或所有爬取结果的pdf
 
+> 20220712: ACS增加反扒验证，目前只有PubMed可用
+
 ## 运行方法
 
 项目已打包为exe文件，[下载](https://github.com/Dragon-GCS/GetPaper/releases/download/v2.0/GetPaper.exe)后可直接使用。
@@ -22,7 +24,7 @@
 
 > 翻译功能需要自行注册百度翻译Api后将个人`appid`与`key`添加到`api_info.json`中。exe可直接使用翻译。
 
-### 使用方法
+## 使用方法
 
 1. 选择需要查询的数据库
 2. 输入查询关键词（必选）以及其他搜索条件（PubMed搜索需要同时输入开始时间和截至时间后，搜索时间才会生效）。
@@ -32,7 +34,7 @@
 6. 主界面的`导出数据`用于将搜索结果导出为`csv`文件，可使用excel另存为`xls`或`xlsx`。
 7. 主界面的`通过DOI下载`可以通过读取txt文件中的doi进行文献下载。**要求txt文件中每行有且仅有一个doi号**
 
-### 项目结构
+## 项目结构
 
 ```bash
 ├─getpaper
@@ -43,7 +45,7 @@
 │  ├─download.py    # Sci-Hub下载模块
 │  └─utils.py       # 工具模块
 ├─hook              # 用于pyinstaller打包，用于导入项目中动态导入的模块
-└─main.pyw           # 入口
+└─main.pyw          # 入口
 ```
 
 ### 爬虫引擎接口
@@ -52,60 +54,48 @@
 
 * 类名必须为`Spider`且继承`getpapaer._spiders`中的`_Spider`基类，用于检测爬虫是否实现了以下方法：
 
-  * ```python
-    class _Spider(ABC):
-        def __init__(self, keyword: str = "",
-                     start_year: str = "",
-                     end_year: str = "",
-                     author: str = "",
-                     journal: str = "",
-                     sorting: str = "") -> None:
-            """
-            Base spider
-            Args:
-                keyword: keyword, split by space
-                start_year: default to 1900
-                end_year: default to next year
-                author: filter by author, default to None
-                journal: filter by published journal, default to None
-                sorting: sorting result by details or match
-            """
-            self.data = self.parseData(keyword, start_year, end_year, author, journal, sorting)  
-    def parseData(self, keyword: str,
-                      start_year: str = "",
-                      end_year: str = "",
-                      author: str = "",
-                      journal: str = "",
-                      sorting: str = "") -> Dict[str, Any]:
-    ```
+  * 初始化爬虫时调用的方法，用于接受GUI传入的搜索相关条目，进行解析后用于搜索，其中`sorting`为搜索结果，包括"相关性"， "日期"， "日期逆序"
 
-    初始化爬虫时调用的方法，用于接受GUI传入的搜索相关条目，进行解析后用于搜索，其中`sorting`为搜索结果，包括"相关性"， "日期"， "日期逆序"。
+      ```python
+      def parseData(self,
+                    keyword: str,
+                    start_year: str,
+                    end_year: str,
+                    author: str,
+                    journal: str,
+                    sorting: str
+                    ) -> Dict[str, Any]:
+          """format details to search format"""
+          pass
+      ```
 
-  * ```python
-    def getTotalPaperNum(self) -> str:
-            """
-            Get the total number of result
-            Returns:
-                num: number of search result
-            """
-            pass
-    ```
+  * 根据搜索信息对数据库进行查找，并返回找到的文献数量提示信息，返回的字符串用于在GUI显示。
 
-    根据搜索信息对数据库进行查找，并返回找到的文献数量提示信息，返回的字符串用于在GUI显示。
+     ```python
+      def getTotalPaperNum(self) -> str:
+          """ Get the total number of result
 
-  * ```python
+          Returns:
+              num: number of search result
+          """
+          pass
+      ```
+
+  * 获取`num`篇文献的`标题`、`作者`、`发表时间`、`发表期刊`、`摘要`、`doi号`、`网址`，并将结果保存至`queue`中。
+
+    ```python
     def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
-            """
-            Get all papers detail
-            Params:
-                queue: a priority queue for storing result and was monitored by GUI thred then feedbacking progess,
-                    details format is [index, (title, authors, date, publication, abstract, doi, web)]
-                num: number of papers to get
-            """
-            pass
-    ```
+        """ Get all papers detail
 
-    获取`num`篇文献的`标题`、`作者`、`发表时间`、`发表期刊`、`摘要`、`doi号`、`网址`，并将结果保存至`queue`中，该队列还用于监控当前的下载进度。数据保存顺序参考如下，不得更改顺序。其中index为文献的序号，用于按序输出搜索结果。
+        Args:
+            queue: a priority queue for storing result and was monitored by GUI thread then feedback progress,
+                   details format is [index, (title, authors, date, publication, abstract, doi, web)]
+            num: number of papers to get
+        """
+        pass
+    ```
+  
+  * 该队列还用于监控当前的下载进度。数据保存顺序参考如下，不得更改顺序。其中index为文献的序号，用于按序输出搜索结果。
 
     ```python
     queue.put(index, (title, authors, date, publication, abstract, doi, web))
@@ -119,19 +109,19 @@
 
 * api相关数据保存在`getpaper/translator/_api_info.json`中，推荐使用以下方法读取该json文件，该方法能够在打包后正常读取文件。
 
-```python
-  import importlib.resources
-  # 第一种
-  f = importlib.resources.open_text('getpaper.translator', '_api_info.json')
-  info = json.load(f)
-  # 第二种
-  txt = importlib.resources.read_text("getpaper.translator", "_api_info.json")
-  info = json.loads(txt)
-```
+    ```python
+      import importlib.resources
+      # 第一种
+      f = importlib.resources.open_text('getpaper.translator', '_api_info.json')
+      info = json.load(f)
+      # 第二种
+      txt = importlib.resources.read_text("getpaper.translator", "_api_info.json")
+      info = json.loads(txt)
+    ```
 
 * 实现`translate(self, detail: str) -> str`方法，文章的title和abstract会分别调用此方法进行翻译，返回的字符串会通过`str()`转换后显示到文本框内。
 
-### 其他
+## 其他
 
 * 使用协程函数：使用`getpaper.utils`中的`@AsyncFunc`对主协程函数进行装饰，才可以被正常调用。
 

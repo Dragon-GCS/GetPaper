@@ -14,7 +14,7 @@ class Application(Style):
     def __init__(self, theme: str) -> None:
         super().__init__(theme)
         self.master.title(APP_NAME)
-        self.master.minsize(960, 600)               # Minimun window size
+        self.master.minsize(960, 600)               # Minimum window size
         self.master.geometry("1080x720")            # Default window size
         self.master.option_add("*Font", FONT)       # Set font
         # Column 1st (main_frame & result_frame)changes with main window's weight

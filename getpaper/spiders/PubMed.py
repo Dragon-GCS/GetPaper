@@ -62,11 +62,14 @@ class Spider(_Spider):
             bs = BeautifulSoup(html, "lxml")
             if bs.find("span", class_="single-result-redirect-message"):
                 self.total_num = 1
-                self.single_page_pmid = bs.find("strong", class_ = "current-id").text
+                if (pmid := bs.find("strong", class_ = "current-id")):
+                    self.single_page_pmid = pmid.text
+                else:
+                    self.single_page_pmid = ""
+            elif (tag := bs.find("div", class_="results-amount")):
+                self.total_num = int(tag.span.text.replace(",", ""))
             else:
-                self.total_num = int(tag.text.replace(",", "")) \
-                    if (tag := bs.find("div", class_="results-amount").span) \
-                    else 0
+                self.total_num = 0
             return f"共找到{self.total_num}篇"
 
     async def getPMIDs(self, num: int) -> Sequence[str]:
@@ -106,15 +109,23 @@ class Spider(_Spider):
             raise TipException("连接超时")
         except Exception as e:
             log.error(
-                f"PubMed Erro in fetching PMIDs[{self.data['page']} / { num // 200 + 1}]: {e}")
+                f"PubMed Error in fetching PMIDs[{self.data['page']} / { num // 200 + 1}]: {e}")
         finally:
             return pmid_list[:num]
 
     async def getPagesInfo(self, index: int, pmid: str):
+        title = "No Title"
+        authors = "No Author"
+        doi = "No DOI"
+        publication = "No Publication"
+        abstract = "No Abstract"
+        date = "No Date"
         web = self.base_url + pmid
+
         # Decrease access frequency
         await asyncio.sleep(index * GET_FREQUENCY)
         log.debug(f"Fetching PMID[{pmid}]")
+
         try:
             async with self.session.get(web) as html:
                 bs = BeautifulSoup(await html.text(), "lxml")
@@ -123,33 +134,30 @@ class Spider(_Spider):
             title, authors, date, publication, abstract, doi = ["Error"] * 6
         else:
             content = bs.find("main", class_="article-details")
+            if not content:
+                return
 
-            title = re.sub(r"\s{2,}", "", tag.text) \
-                if (tag := content.find("h1", class_="heading-title")) \
-                else "No Title"
+            if (tag := content.find("h1", class_="heading-title")):
+                title = re.sub(r"\s{2,}", "", tag.text)
 
-            date = tag.text \
-                if (tag := content.find("span", class_="cit")) \
-                else "No date"
+            if (tag := content.find("span", class_="cit")):
+                date = tag.text
 
-            publication = re.sub(r"\s+", "", tag.text) \
-                if (tag := content.find("button", id="full-view-journal-trigger")) \
-                else "No publication"
+            if (tag := content.find("button", id="full-view-journal-trigger")):
+                publication = re.sub(r"\s+", "", tag.text)
 
-            authors = "; ".join({author.a.text
-                                 for author in content.find_all("span", class_="authors-list-item", limit=5)
-                                 if author.find("a")})
+            if (authors := content.find_all("span", class_="authors-list-item", limit=5)):
+                authors = "; ".join([
+                    author.a.text for author in authors if author.find("a")])
 
-            abstract = re.sub(r"\s{2,}", "", tag.text) \
-                if (tag := content.find(class_="abstract-content selected")) \
-                else "No Abstract"
+            if (tag := content.find(class_="abstract-content selected")):
+                abstract = re.sub(r"\s{2,}", "", tag.text)
 
-            doi = re.sub(r"\s+", "", tag.text) \
-                if (tag := content.find("a", attrs={"data-ga-action": "DOI"})) \
-                else ""
+            if (tag := content.find("a", attrs={"data-ga-action": "DOI"})):
+                doi = re.sub(r"\s+", "", tag.text)
 
-            if tag := content.find(class_="full-text-links-list"):
-                web = tag.a["href"]
+            if link := content.find(class_="full-text-links-list"):
+                web = link.a["href"]
         finally:
             self.result_queue.put((index,
                                    (title, authors, date, publication, abstract, doi, web)))
@@ -163,8 +171,7 @@ class Spider(_Spider):
             self.session = getSession()
 
         tasks = []
-
-        if self.total_num == 1:
+        if self.total_num == 1 and hasattr(self, "single_page_pmid"):
             tasks.append(self.getPagesInfo(0, self.single_page_pmid))
         else:
             for index, pmid in enumerate(await self.getPMIDs(num)):
@@ -180,7 +187,7 @@ class Spider(_Spider):
 
 
 if __name__ == "__main__":
-    pubmed = Spider(keyword="crispr",
+    pubmed = Spider(keyword="dna",
                     start_year="2010",
                     end_year="2020",
                     author="Martin",

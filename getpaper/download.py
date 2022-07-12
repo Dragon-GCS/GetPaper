@@ -17,7 +17,7 @@ log = logging.getLogger("GetPaper")
 def checkFilename(filename: str, suffix: str = ".pdf"):
     """
     Check whether the filename contains invalid character.
-    Add suffix automatically if filname doesn't ends with specified suffix.
+    Add suffix automatically if filename does not ends with specified suffix.
     Args:
         filename: filename to save, not recommended contains path
         suffix: the specified string at the end of filename
@@ -39,10 +39,10 @@ class Downloader(Protocol):
 
 
 class SciHubDownloader:
-    def __init__(self, url: str) -> None:
-        self.monitor: Optional[Queue] = None
-        self.session: Optional[aiohttp.ClientSession] = None
+    monitor: Queue
+    session: aiohttp.ClientSession
 
+    def __init__(self, url: str) -> None:
         if not url.startswith("https"):
             url = "https://" + url
         self.url = url
@@ -129,9 +129,11 @@ class SciHubDownloader:
                 del self.session
 
     @AsyncFunc
-    async def multiDownload(self, details: Sequence[Sequence[str]], 
-                            monitor: Queue = None,
-                            target_dir: str = "") -> None:
+    async def multiDownload(self,
+                            details: Sequence[Sequence[str]], 
+                            monitor: Queue,
+                            target_dir: str = ""
+                            ) -> None:
         """
         Download multiple paper from sci-hub by doi, filename defaults to title.
         Args:
@@ -139,7 +141,6 @@ class SciHubDownloader:
             monitor：A Queue for monitoring the download progress by monitor.qsize() / monitor.max_size
             target_dir: Directory to save all PDFs.
         """
-
         self.monitor = monitor
 
         if getattr(self, "session", None) is None:

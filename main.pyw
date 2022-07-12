@@ -5,9 +5,12 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import logging
-logging.basicConfig(level=logging.INFO,
-                    datefmt = "%H:%M:%S",
-                    format = "[%(asctime)s %(levelname)s] - %(filename)s[line:%(lineno)d] - Thread[%(threadName)s]\n%(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    datefmt = "%H:%M:%S",
+    format = "[%(asctime)s %(levelname)s] -" \
+             " %(filename)s[line:%(lineno)d] - Thread[%(threadName)s]\n%(message)s"
+)
 
 from getpaper.GUI import Application
 

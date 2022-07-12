@@ -26,18 +26,18 @@ class TextFrame(Frame):
 
     def enShow(self, detail: Sequence[str]) -> None:
         """
-        Show the infomation of paper with origin language on en_text_frame
+        Show the information of paper with origin language on en_text_frame
         Args:
-            detail: Paper's origin infomation, from search result
+            detail: Paper's origin information, from search result
         """
 
         self._show(detail, RESULT_LIST_EN)
 
     def cnShow(self, detail: Sequence[str]) -> None:
         """
-        Show the infomation of paper with Chinese on cn_text_frame
+        Show the information of paper with Chinese on cn_text_frame
         Args:
-            detail: Paper's infomation that title and abstract were tanslated.
+            detail: Paper's information that title and abstract were translated.
         """
 
         self._show(detail, RESULT_LIST_CN)
@@ -46,7 +46,7 @@ class TextFrame(Frame):
         """
         Print the detail and corresponding header on the text frame
         Args:
-            detail: Paper's detail infomation
+            detail: Paper's detail information
                     Include title, authors, date, publication, abstract, doi, web_url.
             header: Headers corresponding to the detail
         """
