@@ -58,7 +58,7 @@ class Spider(_Spider):
             if (total_num := bs.find("span", attrs = {"class": "result__count"})) is None:
                 return f"共找到0篇"
             else:
-                return f"共找到{total_num.string}篇"
+                return f"共找到{total_num.string}篇"  # type: ignore
 
     async def getPagesInfo(self, data: Dict[str, Any], num: int) -> None:
         """

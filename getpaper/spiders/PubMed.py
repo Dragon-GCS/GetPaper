@@ -67,7 +67,7 @@ class Spider(_Spider):
                 else:
                     self.single_page_pmid = ""
             elif (tag := bs.find("div", class_="results-amount")):
-                self.total_num = int(tag.span.text.replace(",", ""))
+                self.total_num = int(tag.span.text.replace(",", ""))  # type: ignore
             else:
                 self.total_num = 0
             return f"共找到{self.total_num}篇"
@@ -137,27 +137,27 @@ class Spider(_Spider):
             if not content:
                 return
 
-            if (tag := content.find("h1", class_="heading-title")):
+            if (tag := content.find("h1", class_="heading-title")):  # type: ignore
                 title = re.sub(r"\s{2,}", "", tag.text)
 
-            if (tag := content.find("span", class_="cit")):
+            if (tag := content.find("span", class_="cit")):  # type: ignore
                 date = tag.text
 
-            if (tag := content.find("button", id="full-view-journal-trigger")):
+            if (tag := content.find("button", id="full-view-journal-trigger")):  # type: ignore
                 publication = re.sub(r"\s+", "", tag.text)
 
-            if (authors := content.find_all("span", class_="authors-list-item", limit=5)):
+            if (authors := content.find_all("span", class_="authors-list-item", limit=5)):  # type: ignore
                 authors = "; ".join([
                     author.a.text for author in authors if author.find("a")])
 
-            if (tag := content.find(class_="abstract-content selected")):
+            if (tag := content.find(class_="abstract-content selected")):  # type: ignore
                 abstract = re.sub(r"\s{2,}", "", tag.text)
 
-            if (tag := content.find("a", attrs={"data-ga-action": "DOI"})):
+            if (tag := content.find("a", attrs={"data-ga-action": "DOI"})):  # type: ignore
                 doi = re.sub(r"\s+", "", tag.text)
 
-            if link := content.find(class_="full-text-links-list"):
-                web = link.a["href"]
+            if link := content.find(class_="full-text-links-list"):  # type: ignore
+                web = link.a["href"]  # type: ignore
         finally:
             self.result_queue.put((index,
                                    (title, authors, date, publication, abstract, doi, web)))

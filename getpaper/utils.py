@@ -110,7 +110,7 @@ def setSpider(func: Callable[..., Any]) -> Callable[..., None]:
     return wrapped
 
 
-def getQueueData(queue: PriorityQueue[List[str]]) -> List[List[str]]:
+def getQueueData(queue: PriorityQueue) -> List[List[str]]:
     """Extract data from queue
 
     Args:
