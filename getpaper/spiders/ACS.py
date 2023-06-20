@@ -83,7 +83,11 @@ class Spider(_Spider):
             bs = BeautifulSoup(html, "lxml")
             contents = iter(bs.find_all(class_ = "issue-item_metadata"))
             for index in range(page * 100, min((page + 1) * 100, num)):
-                content = (next(contents))
+                try:
+                    content = (next(contents))
+                except StopIteration:
+                    self.result_queue.put((index, [""] * 6))
+                    continue
                 # Find titles、doi、web_url
                 title_tag = content.find("h2", class_ = "issue-item_title")
                 title = title_tag.text if title_tag else "No title"

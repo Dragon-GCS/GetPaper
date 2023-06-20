@@ -130,7 +130,7 @@ class MainFrame(Frame):
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
-    @setSpider
+    # @setSpider
     @startThread("FetchDetail")
     def getDetail(self) -> None:
         """
