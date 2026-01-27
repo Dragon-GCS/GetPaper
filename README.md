@@ -15,7 +15,7 @@
 
 项目已打包为exe文件，[下载](https://github.com/Dragon-GCS/GetPaper/releases/download/v2.0/GetPaper.exe)后可直接使用。
 
-运行环境：python3.8+
+运行环境：>=python3.11
 
 * 克隆本项目后cd至项目目录
 * 使用`pip install -r requirements.txt`
