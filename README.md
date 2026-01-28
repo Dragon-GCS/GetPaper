@@ -24,6 +24,25 @@
 
 > 翻译功能需要自行注册百度翻译Api后将个人`appid`与`key`添加到`api_info.json`中。exe可直接使用翻译。
 
+## 自动发布
+
+项目已配置GitHub Actions自动化工作流。当推送带有`v`前缀的标签时（如`v2.1`、`v3.0`等），将自动执行以下操作：
+
+1. 在Windows环境中设置Python 3.11环境
+2. 安装项目依赖
+3. 使用PyInstaller打包生成可执行文件
+4. 创建GitHub Release并上传打包好的`GetPaper.exe`
+
+**使用方法：**
+
+```bash
+# 创建并推送新版本标签
+git tag v2.1
+git push origin v2.1
+```
+
+推送标签后，可以在仓库的[Actions页面](https://github.com/Dragon-GCS/GetPaper/actions)查看构建进度，完成后会自动在[Releases页面](https://github.com/Dragon-GCS/GetPaper/releases)创建新的发布版本。
+
 ## 使用方法
 
 1. 选择需要查询的数据库
