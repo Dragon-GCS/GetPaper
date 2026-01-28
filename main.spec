@@ -1,7 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
-import sys
 
 # Get ttkbootstrap path dynamically
 try:
