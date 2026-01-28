@@ -1,15 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+# Get ttkbootstrap path dynamically
+try:
+    import ttkbootstrap
+    ttkbootstrap_path = os.path.dirname(ttkbootstrap.__file__)
+except ImportError:
+    ttkbootstrap_path = None
 
 block_cipher = None
 
+# Build data files list dynamically
+datas = []
+if ttkbootstrap_path:
+    datas.extend([
+        (os.path.join(ttkbootstrap_path, "Symbola.ttf"), "ttkbootstrap"),  # Theme字体
+        (os.path.join(ttkbootstrap_path, "themes.json"), "ttkbootstrap"),  # Theme文件
+    ])
+datas.append(("getpaper/translator/_api_info.json", "getpaper/translator"))  # 翻译api数据
 
 a = Analysis(['main.pyw'],
-             pathex=['E:\\ProjectFiles\\Python\\01_Spider\\01_GetPaper'],
+             pathex=[],
              binaries=[],
-             datas=[(".venv/Lib/site-packages/ttkbootstrap/Symbola.ttf", "ttkbootstrap"),  # Theme字体
-                    (".venv/Lib/site-packages/ttkbootstrap/themes.json", "ttkbootstrap"),  # Theme文件
-                    ("getpaper/translator/_api_info.json", "getpaper/translator")],        # 翻译api数据
+             datas=datas,
              hiddenimports=[],
              hookspath=["./hook"],  # 动态导入用
              hooksconfig={},
