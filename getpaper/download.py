@@ -71,7 +71,7 @@ class SciHubDownloader:
                 try:
                     async with self.session.get(url) as response:
                         bs = BeautifulSoup(await response.text(), "lxml")
-                        if pdf := bs.find("iframe", id = "pdf"):
+                        if pdf := bs.find(id="pdf"):
                             async with self.session.get(pdf["src"].split("#")[0]) as result:
                                 content = await result.read()
                                 flag = True
