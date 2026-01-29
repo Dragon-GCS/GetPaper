@@ -282,7 +282,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "beautifulsoup4", specifier = "==4.10.0" },
     { name = "lxml", specifier = ">=4.9.0" },
-    { name = "ttkbootstrap", specifier = "==0.5.1" },
+    { name = "ttkbootstrap", specifier = "~=1.20" },
 ]
 
 [package.metadata.requires-dev]
@@ -796,14 +796,14 @@ wheels = [
 
 [[package]]
 name = "ttkbootstrap"
-version = "0.5.1"
+version = "1.20.1"
 source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pillow" },
 ]
-sdist = { url = "https://mirrors.aliyun.com/pypi/packages/8c/5f/f5b3794ba096fcd6f6b560c15329e576716778e51a88637a20d5c089d6cb/ttkbootstrap-0.5.1.tar.gz", hash = "sha256:e163b0a08ade5765b6debf90606a9c66af7e3851566bdd70500baa06c62d77c0" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/e8/b0/1107a9abe1f4886bffee7b3a6d33654402238cb4571ed14ac8466456b5cb/ttkbootstrap-1.20.1.tar.gz", hash = "sha256:78cde59bba669e6836d13e53ab22e80caaf0236316d47c22ff14f9ea2179c145" }
 wheels = [
-    { url = "https://mirrors.aliyun.com/pypi/packages/c3/b2/83e1e1841cd1c7fb3ce52d4c72de67503201fa4cb92406a008a7425ada07/ttkbootstrap-0.5.1-py3-none-any.whl", hash = "sha256:d2aca8b1d3b48aee8d3cc40c48cf7b4739053fa29b704f0153a39d7af900f1ce" },
+    { url = "https://mirrors.aliyun.com/pypi/packages/a4/a5/c5952be4ee2cbbf3267be91a5968f7ed1e6da371181eebb776a4633a3215/ttkbootstrap-1.20.1-py3-none-any.whl", hash = "sha256:f7419801fa169108ed7dce52a6004e9f34a4b6706802c8e70c0d23f157ffb868" },
 ]
 
 [[package]]

@@ -1,8 +1,9 @@
 import logging
 import time
-import tkinter as tk
+import ttkbootstrap as ttk
 from queue import PriorityQueue, Queue
-from tkinter.ttk import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
+from ttkbootstrap import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox
+from ttkbootstrap import constants
 from typing import List
 
 from getpaper.config import (DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list)
@@ -12,13 +13,13 @@ from getpaper.spiders._spider import _Spider
 log = logging.getLogger("GetPaper")
 
 class TipFrame(Frame):
-    def __init__(self, master: tk.Widget) -> None:
+    def __init__(self, master: ttk.Frame) -> None:
         super().__init__(master)
         self.columnconfigure(1, weight = 1)
         self.label = Label(self, text = "进度", width = 16, anchor = "e")
-        self.label.grid(row = 0, column = 0, sticky = tk.E)
+        self.label.grid(row = 0, column = 0, sticky = constants.E)
         self.bar = Progressbar(self, style = "info.Striped.Horizontal.TProgressbar")
-        self.bar.grid(row = 0, column = 1, sticky = tk.EW)
+        self.bar.grid(row = 0, column = 1, sticky = constants.EW)
 
     def setTip(self, text: str) -> None:
         self.label["text"] = text
@@ -27,9 +28,9 @@ class TipFrame(Frame):
 class MainFrame(Frame):
     spider: _Spider
     result: List[List[str]]
-    def __init__(self, master: tk.Widget, result_frame: tk.Widget, **kwargs):
+    def __init__(self, master: ttk.Window, result_frame: ttk.Frame, **kwargs):
         super().__init__(master, **kwargs)
-        self.grid(row = 0, sticky = tk.EW)
+        self.grid(row = 0, sticky = constants.EW)
         self.result_frame = result_frame
         self.columnconfigure(0, weight = 1)
 
@@ -39,57 +40,57 @@ class MainFrame(Frame):
         self.row_3 = Frame(self, **kwargs)
         self.row_4 = Frame(self, **kwargs)
         for row in range(1, 5):
-            getattr(self, f"row_{row}").grid(row = row, sticky = tk.EW)
+            getattr(self, f"row_{row}").grid(row = row, sticky = constants.EW)
             getattr(self, f"row_{row}").rowconfigure(0, weight = 1)
 
             for i in range(20):
                 getattr(self, f"row_{row}").columnconfigure(i + 1, weight = 1)
 
         ###################### Row 1st start ######################
-        Label(self.row_1, text = "查询数据库：").grid(row = 0, column = 0, sticky = tk.E)
+        Label(self.row_1, text = "查询数据库：").grid(row = 0, column = 0, sticky = constants.E)
         # Choose a database to search
         self.engine = Combobox(self.row_1, values = spider_list, state = "readonly")
         # Bind a function which can remove the ugly background after select
         self.engine.bind("<<ComboboxSelected>>", lambda e: self.engine.selection_clear())
-        self.engine.grid(row = 0, column = 1, sticky = tk.W)
+        self.engine.grid(row = 0, column = 1, sticky = constants.W)
         # Available url of Sci-Hub
-        Label(self.row_1, text = "如需下载文献请在此输入可用的SciHub网址：https：//").grid(row = 0, column = 20, sticky = "e")
+        Label(self.row_1, text = "如需下载文献请在此输入可用的SciHub网址：https：//").grid(row = 0, column = 20, sticky = constants.E)
         self.scihub_url = Entry(self.row_1)
         self.scihub_url.insert(0, DEFAULT_SCI_HUB_URL)
-        self.scihub_url.grid(row = 0, column = 21, sticky = tk.W)
+        self.scihub_url.grid(row = 0, column = 21, sticky = constants.W)
         ####################### Row 1st end #######################
 
         ###################### Row 2nd start ######################
         # Keywords
-        Label(self.row_2, text = "请输入查询关键词：", width = 16, anchor = "e").grid(row = 0, column = 0, sticky = tk.E)
+        Label(self.row_2, text = "请输入查询关键词：", width = 16, anchor = "e").grid(row = 0, column = 0, sticky = constants.E)
         self.keyword = Entry(self.row_2)
-        self.keyword.grid(row = 0, column = 1, columnspan = 15, sticky = tk.EW)
+        self.keyword.grid(row = 0, column = 1, columnspan = 15, sticky = constants.EW)
         self.keyword.focus()
         # Start year of search
-        Label(self.row_2, text = "开始时间").grid(row = 0, column = 18, sticky = tk.E)
+        Label(self.row_2, text = "开始时间").grid(row = 0, column = 18, sticky = constants.E)
         self.start_year = Spinbox(self.row_2, from_ = 1900, to = 2022)
-        self.start_year.grid(row = 0, column = 19, sticky = tk.W)
+        self.start_year.grid(row = 0, column = 19, sticky = constants.W)
         # End year of search
-        Label(self.row_2, text = "截至时间").grid(row = 0, column = 20, sticky = tk.E)
+        Label(self.row_2, text = "截至时间").grid(row = 0, column = 20, sticky = constants.E)
         self.end_year = Spinbox(self.row_2, from_ = 1900, to = 2022)
-        self.end_year.grid(row = 0, column = 21, sticky = tk.W)
+        self.end_year.grid(row = 0, column = 21, sticky = constants.W)
         ####################### Row 2nd end #######################
 
         ###################### Row 3rd start ######################
         # Author
-        Label(self.row_3, text = "作者：", width = 16, anchor = "e").grid(row = 0, column = 0, sticky = tk.E)
+        Label(self.row_3, text = "作者：", width = 16, anchor = "e").grid(row = 0, column = 0, sticky = constants.E)
         self.author = Entry(self.row_3)
-        self.author.grid(row = 0, column = 1, sticky = tk.W)
+        self.author.grid(row = 0, column = 1, sticky = constants.W)
         # Publication
-        Label(self.row_3, text = "期刊：").grid(row = 0, column = 11, sticky = tk.E)
+        Label(self.row_3, text = "期刊：").grid(row = 0, column = 11, sticky = constants.E)
         self.journal = Entry(self.row_3)
-        self.journal.grid(row = 0, column = 12, sticky = tk.W)
+        self.journal.grid(row = 0, column = 12, sticky = constants.W)
         # Sort order of search result
-        Label(self.row_3, text = "排序方式").grid(row = 0, column = 20, sticky = tk.E)
+        Label(self.row_3, text = "排序方式").grid(row = 0, column = 20, sticky = constants.E)
         self.sorting = Combobox(self.row_3, values = SORTED_BY, state = "readonly")
         self.sorting.current(0)
         self.sorting.bind("<<ComboboxSelected>>", lambda e: self.sorting.selection_clear())
-        self.sorting.grid(row = 0, column = 21, sticky = tk.W)
+        self.sorting.grid(row = 0, column = 21, sticky = constants.W)
         ####################### Row 3rd end #######################
 
         ###################### Row 4th start ######################
@@ -99,10 +100,10 @@ class MainFrame(Frame):
         self.tip = TipFrame(self.row_4)
         self.tip.grid(row = 0, column = 3, columnspan = 15)
         # Choose the quantity of search
-        Label(self.row_4, text = "请输入需要获取的文献数量：").grid(row = 0, column = 19, sticky = tk.E)
+        Label(self.row_4, text = "请输入需要获取的文献数量：").grid(row = 0, column = 19, sticky = constants.E)
         self.num = Entry(self.row_4)
         self.num.insert(0, "0")
-        self.num.grid(row = 0, column = 20, sticky = tk.W)
+        self.num.grid(row = 0, column = 20, sticky = constants.W)
         # Download button
         self.download_button = Button(self.row_4, text = "获取详情", command = self.getDetail, width = 10)
         self.download_button.grid(row = 0, column = 21)
@@ -124,8 +125,8 @@ class MainFrame(Frame):
             t.join()
             if t.result:
                 self.tip.setTip(t.result)
-        except Exception as e:
-            log.error(e)
+        except Exception:
+            log.exception("Setting spider error")
         finally:
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
@@ -158,8 +159,8 @@ class MainFrame(Frame):
                      ).start()
 
             self.monitor(result, num)
-        except Exception as e:
-            log.error(e)
+        except Exception:
+            log.exception("Get Detail Error")
         else:
             self.tip.setTip("获取结束")
         finally:

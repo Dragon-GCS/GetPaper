@@ -1,21 +1,24 @@
 import csv
 import logging
-import os
-import tkinter as tk
 import webbrowser
+from pathlib import Path
 from queue import Queue
 from tkinter.filedialog import askdirectory, askopenfile, asksaveasfilename
-from typing import List
+from typing import TYPE_CHECKING, List
 
-from getpaper.GUI.main_frame import MainFrame
+import ttkbootstrap as ttk
+
 from getpaper.config import PROJECT_URL, RESULT_LIST_EN
 from getpaper.download import SciHubDownloader
 from getpaper.utils import MyThread, startThread
 
+if TYPE_CHECKING:
+    from getpaper.GUI.main_frame import MainFrame
+
 log = logging.getLogger("GetPaper")
 
 
-class MenuBar(tk.Menu):
+class MenuBar(ttk.Menu):
     def __init__(self, app):
         """
         Application's MenuBar
@@ -46,20 +49,20 @@ class MenuBar(tk.Menu):
             return
 
         if filename := asksaveasfilename(defaultextension=".csv", filetypes=[("csv", ".csv")]):
-            filename = os.path.abspath(filename)
+            filename = Path(filename)
             log.info(f"Save file to file: {filename}")
             try:
-                with open(filename, "w", newline="", encoding="utf-8") as f:
+                with filename.open("w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow([s.strip(":\n") for s in RESULT_LIST_EN])
                     writer.writerows(self.main_frame.result)
                 self.tip.setTip("保存成功")
-            except Exception as e:
-                log.error(f"Save {filename} failed: ", e)
+            except Exception:
+                log.exception(f"Save {filename} failed")
                 self.tip.setTip("保存失败")
 
     @startThread("DownloadPapers")
-    def downloadAll(self, details: List[List[str]] = []) -> None:
+    def downloadAll(self, details: List[List[str]]) -> None:
         """
         Using SciHubDownloader to get PDFs of all results to specified directory
         Args:
@@ -75,8 +78,7 @@ class MenuBar(tk.Menu):
             details = self.main_frame.result
 
         if target_dir := askdirectory():
-            log.info(
-                f"Downloading all paper to directory: {os.path.abspath(target_dir)}")
+            log.info(f"Downloading all paper to directory: {Path(target_dir).absolute()}")
 
             self.tip.setTip("准备下载中...")
 
@@ -84,10 +86,12 @@ class MenuBar(tk.Menu):
                 # create a queue for monitor progress of download
                 monitor_queue = Queue(maxsize=len(details))
                 downloader = SciHubDownloader(self.main_frame.scihub_url.get())
-                MyThread(tip_set=self.tip.setTip,
-                         target=downloader.multiDownload,
-                         args=(details, monitor_queue, target_dir),
-                         name="Multi-Download").start()
+                MyThread(
+                    tip_set=self.tip.setTip,
+                    target=downloader.multiDownload,
+                    args=(details, monitor_queue, target_dir),
+                    name="Multi-Download",
+                ).start()
 
                 self.main_frame.monitor(monitor_queue, len(details))
 

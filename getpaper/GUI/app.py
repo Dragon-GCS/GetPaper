@@ -1,19 +1,17 @@
 import logging
-from tkinter import ttk
 
-from ttkbootstrap import Style
+import ttkbootstrap as ttk
 
+from getpaper.config import APP_NAME, FONT, FRAME_STYLE
 from getpaper.GUI.main_frame import MainFrame
 from getpaper.GUI.menu import MenuBar
 from getpaper.GUI.result_frame import ResultFrame
-from getpaper.config import APP_NAME, FONT, FRAME_STYLE
 
 log = logging.getLogger("GetPaper")
 
-class Application(Style):
+class Application:
     def __init__(self, theme: str) -> None:
-        super().__init__(theme)
-        self.master.title(APP_NAME)
+        self.master = ttk.Window(title=APP_NAME, themename=theme)
         self.master.minsize(960, 600)               # Minimum window size
         self.master.geometry("1080x720")            # Default window size
         self.master.option_add("*Font", FONT)       # Set font
@@ -28,7 +26,6 @@ class Application(Style):
         style = ttk.Style()
         style.configure("TButton", font = FONT)
         style.configure("Treeview", font = ("times", 12))
-        style.configure("Heading", font = FONT)
 
         menu = MenuBar(self)
         self.master["menu"] = menu

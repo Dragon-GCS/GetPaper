@@ -1,12 +1,13 @@
 import logging
 import tkinter as tk
 from tkinter.filedialog import asksaveasfilename
-from tkinter.ttk import Button, Combobox, Frame, Scrollbar
 from typing import Sequence
 
-from getpaper.GUI.main_frame import TipFrame
+from ttkbootstrap import Button, Combobox, Frame, Scrollbar
+
 from getpaper.config import FONT, FRAME_STYLE, RESULT_LIST_CN, RESULT_LIST_EN, translator_list
 from getpaper.download import Downloader
+from getpaper.GUI.main_frame import TipFrame
 from getpaper.utils import getTranslator, startThread
 
 log = logging.getLogger("GetPaper")
@@ -132,8 +133,8 @@ class DetailWindow(tk.Toplevel):
         try:
             self.downloader.download(self.detail[5], filename)
             self.tip.bar.stop()
-        except Exception as e:
-            log.error(f"Download Paper Error: {e}")
+        except Exception:
+            log.exception("Download Paper Error")
             self.tip.setTip("未知错误")
         else:
             self.tip.setTip("下载完成")
@@ -152,7 +153,7 @@ class DetailWindow(tk.Toplevel):
         self.tip.setTip("翻译中...")
         self.tip.bar.start()
         try:
-            zh_detail = [item for item in self.detail]  # change tuple to list
+            zh_detail = list(self.detail)  # change tuple to list
             zh_detail[0] = self.translator.translate(self.detail[0])
             zh_detail[4] = self.translator.translate(self.detail[4])
             self.ch_text.cnShow(zh_detail)
