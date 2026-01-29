@@ -17,12 +17,15 @@ class Spider(_Spider):
     base_url = "https://pubmed.ncbi.nlm.nih.gov/"
     single_page_pmid: str
 
-    def parseData(self, keyword: str,
-                  start_year: str = "",
-                  end_year: str = "",
-                  author: str = "",
-                  journal: str = "",
-                  sorting: str = "") -> Dict[str, Any]:
+    def parseData(
+        self,
+        keyword: str,
+        start_year: str = "",
+        end_year: str = "",
+        author: str = "",
+        journal: str = "",
+        sorting: str = "",
+    ) -> Dict[str, Any]:
         """parse input parameters as url data"""
         data = {}
         # Parsing term field
@@ -50,23 +53,24 @@ class Spider(_Spider):
     async def getTotalPaperNum(self):
         self.data["format"] = "summary"
         try:
-            async with getSession() as session:
-                async with session.get(self.base_url, params=self.data) as response:
-                    log.info(
-                        f"Get URL: {response.url}\nURL Status: {response.status}")
-                    html = await response.text()
-        except asyncio.exceptions.TimeoutError:
+            async with (
+                getSession() as session,
+                session.get(self.base_url, params=self.data) as response,
+            ):
+                log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
+                html = await response.text()
+        except asyncio.exceptions.TimeoutError as e:
             log.info("PubMed Spider Get Total Num Time Out")
-            raise TipException("连接超时")
+            raise TipException("连接超时") from e
         else:
             bs = BeautifulSoup(html, "lxml")
             if bs.find("span", class_="single-result-redirect-message"):
                 self.total_num = 1
-                if (pmid := bs.find("strong", class_ = "current-id")):
+                if pmid := bs.find("strong", class_="current-id"):
                     self.single_page_pmid = pmid.text
                 else:
                     self.single_page_pmid = ""
-            elif (tag := bs.find("div", class_="results-amount")):
+            elif tag := bs.find("div", class_="results-amount"):
                 self.total_num = int(tag.span.text.replace(",", ""))  # type: ignore
             else:
                 self.total_num = 0
@@ -79,15 +83,12 @@ class Spider(_Spider):
             num: Number of PMIDs to fetch
         """
         pmid_list = []
-        self.data.update({"size": "200",
-                          "page": 1,
-                          "format": "pmid"})
+        self.data.update({"size": "200", "page": 1, "format": "pmid"})
         # Get page by order and fetch PMIDs
         try:
             while self.data["page"] <= (num - 1) // 200 + 1:
                 async with self.session.get(self.base_url, params=self.data.copy()) as response:
-                    log.info(
-                        f"Get URL: {response.url}\nURL Status: {response.status}")
+                    log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
                     html = await response.text()
 
                 bs = BeautifulSoup(html, "lxml")
@@ -104,14 +105,12 @@ class Spider(_Spider):
                     break
 
                 self.data["page"] += 1
-        except asyncio.exceptions.TimeoutError:
+        except asyncio.exceptions.TimeoutError as e:
             log.info("PubMed Fetch PMIDs Time Out")
-            raise TipException("连接超时")
-        except Exception as e:
-            log.error(
-                f"PubMed Error in fetching PMIDs[{self.data['page']} / { num // 200 + 1}]: {e}")
-        finally:
-            return pmid_list[:num]
+            raise TipException("连接超时") from e
+        except Exception:
+            log.exception(f"PubMed Error in fetching PMIDs[{self.data['page']} / {num // 200 + 1}]")
+        return pmid_list[:num]
 
     async def getPagesInfo(self, index: int, pmid: str):
         title = "No Title"
@@ -129,38 +128,36 @@ class Spider(_Spider):
         try:
             async with self.session.get(web) as html:
                 bs = BeautifulSoup(await html.text(), "lxml")
-        except Exception as e:
-            log.error(f"PMID[{pmid}] Spider Error: {e}")
+        except Exception:
+            log.exception(f"PMID[{pmid}] Spider Error")
             title, authors, date, publication, abstract, doi = ["Error"] * 6
         else:
             content = bs.find("main", class_="article-details")
             if not content:
                 return
 
-            if (tag := content.find("h1", class_="heading-title")):  # type: ignore
+            if tag := content.find("h1", class_="heading-title"):  # type: ignore
                 title = re.sub(r"\s{2,}", "", tag.text)
 
-            if (tag := content.find("span", class_="cit")):  # type: ignore
+            if tag := content.find("span", class_="cit"):  # type: ignore
                 date = tag.text
 
-            if (tag := content.find("button", id="full-view-journal-trigger")):  # type: ignore
+            if tag := content.find("button", id="full-view-journal-trigger"):  # type: ignore
                 publication = re.sub(r"\s+", "", tag.text)
 
-            if (authors := content.find_all("span", class_="authors-list-item", limit=5)):  # type: ignore
-                authors = "; ".join([
-                    author.a.text for author in authors if author.find("a")])
+            if authors := content.find_all("span", class_="authors-list-item", limit=5):  # type: ignore
+                authors = "; ".join([author.a.text for author in authors if author.find("a")])
 
-            if (tag := content.find(class_="abstract-content selected")):  # type: ignore
+            if tag := content.find(class_="abstract-content selected"):  # type: ignore
                 abstract = re.sub(r"\s{2,}", "", tag.text)
 
-            if (tag := content.find("a", attrs={"data-ga-action": "DOI"})):  # type: ignore
+            if tag := content.find("a", attrs={"data-ga-action": "DOI"}):  # type: ignore
                 doi = re.sub(r"\s+", "", tag.text)
 
             if link := content.find(class_="full-text-links-list"):  # type: ignore
                 web = link.a["href"]  # type: ignore
         finally:
-            self.result_queue.put((index,
-                                   (title, authors, date, publication, abstract, doi, web)))
+            self.result_queue.put((index, (title, authors, date, publication, abstract, doi, web)))
 
     @AsyncFunc
     async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
@@ -187,16 +184,17 @@ class Spider(_Spider):
 
 
 if __name__ == "__main__":
-    pubmed = Spider(keyword="dna",
-                    start_year="2010",
-                    end_year="2020",
-                    author="Martin",
-                    journal="nature",
-                    sorting="相关性"
-                    )
+    pubmed = Spider(
+        keyword="dna",
+        start_year="2010",
+        end_year="2020",
+        author="Martin",
+        journal="nature",
+        sorting="相关性",
+    )
 
     print(pubmed.getTotalPaperNum())
     q = PriorityQueue(1)
     pubmed.getAllPapers(q, 1)
-    for i in range(1):
+    for _ in range(1):
         print(q.get())

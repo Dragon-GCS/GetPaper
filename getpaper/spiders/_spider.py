@@ -1,10 +1,8 @@
-import logging
 from abc import ABC, abstractmethod
 from queue import PriorityQueue
-from typing import Any, Dict
-from aiohttp import ClientSession
+from typing import Any
 
-log = logging.getLogger("GetPaper")
+from aiohttp import ClientSession
 
 
 class _Spider(ABC):
@@ -13,15 +11,16 @@ class _Spider(ABC):
     session: ClientSession
     result_queue: PriorityQueue
 
-    def __init__(self,
-                 keyword: str = "",
-                 start_year: str = "",
-                 end_year: str = "",
-                 author: str = "",
-                 journal: str = "",
-                 sorting: str = ""
-                 ) -> None:
-        """ Base spider
+    def __init__(
+        self,
+        keyword: str = "",
+        start_year: str = "",
+        end_year: str = "",
+        author: str = "",
+        journal: str = "",
+        sorting: str = "",
+    ) -> None:
+        """Base spider
 
         Args:
             keyword: keyword, split by space
@@ -31,24 +30,18 @@ class _Spider(ABC):
             journal: filter by published journal, default to None
             sorting: sorting result by details or match
         """
-        self.data = self.parseData(
-            keyword, start_year, end_year, author, journal, sorting)
+        self.data = self.parseData(keyword, start_year, end_year, author, journal, sorting)
 
     @abstractmethod
-    def parseData(self,
-                  keyword: str,
-                  start_year: str,
-                  end_year: str,
-                  author: str,
-                  journal: str,
-                  sorting: str
-                  ) -> Dict[str, Any]:
+    def parseData(
+        self, keyword: str, start_year: str, end_year: str, author: str, journal: str, sorting: str
+    ) -> dict[str, Any]:
         """format details to search format"""
         return {}
 
     @abstractmethod
     def getTotalPaperNum(self) -> str:
-        """ Get the total number of result
+        """Get the total number of result
 
         Returns:
             num: number of search result
@@ -56,8 +49,10 @@ class _Spider(ABC):
         pass
 
     @abstractmethod
-    def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
-        """ Get all papers detail
+    def getAllPapers(
+        self, queue: PriorityQueue[tuple[int, tuple[str, str, str, str, str, str, str]]], num: int
+    ):
+        """Get all papers detail
 
         Args:
             queue: a priority queue for storing result and was monitored by GUI thread then feedback progress,

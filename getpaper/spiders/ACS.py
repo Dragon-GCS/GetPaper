@@ -9,20 +9,23 @@ from bs4 import BeautifulSoup
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import AsyncFunc, TipException, getSession
 
-GET_FREQUENCY = 0.05    # frequency to fetch paper
+GET_FREQUENCY = 0.05  # frequency to fetch paper
 log = logging.getLogger("GetPaper")
+
 
 class Spider(_Spider):
     base_url = "https://pubs.acs.org/action/doSearch"
 
-    def parseData(self, keyword: str,
-                  start_year: str = "",
-                  end_year: str = "",
-                  author: str = "",
-                  journal: str = "",
-                  sorting: str = "") -> Dict[str, Any]:
-        data = {"AllField": keyword,
-                "startPage": 0}
+    def parseData(
+        self,
+        keyword: str,
+        start_year: str = "",
+        end_year: str = "",
+        author: str = "",
+        journal: str = "",
+        sorting: str = "",
+    ) -> Dict[str, Any]:
+        data = {"AllField": keyword, "startPage": 0}
         # Parsing author field
         if author:
             data["Contrib"] = author
@@ -45,20 +48,21 @@ class Spider(_Spider):
         self.data["startPage"] = 0
         self.data["pageSize"] = 20
         try:
-            async with getSession() as session:
-                async with session.get(self.base_url, params = self.data) as response:
-                    log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
-                    html = await response.text()
-        except asyncio.exceptions.TimeoutError:
+            async with (
+                getSession() as session,
+                session.get(self.base_url, params=self.data) as response,
+            ):
+                log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
+                html = await response.text()
+        except asyncio.exceptions.TimeoutError as e:
             log.info("ACS Spider Get Total Num Time Out")
-            raise TipException("连接超时")
+            raise TipException("连接超时") from e
         else:
             bs = BeautifulSoup(html, "lxml")
 
-            if (total_num := bs.find("span", attrs = {"class": "result__count"})) is None:
-                return f"共找到0篇"
-            else:
-                return f"共找到{total_num.string}篇"  # type: ignore
+            if (total_num := bs.find("span", attrs={"class": "result__count"})) is None:
+                return "共找到0篇"
+            return f"共找到{total_num.string}篇"
 
     async def getPagesInfo(self, data: Dict[str, Any], num: int) -> None:
         """
@@ -72,55 +76,62 @@ class Spider(_Spider):
         await asyncio.sleep(page * GET_FREQUENCY)
 
         try:
-            async with self.session.get(self.base_url, params = data) as response:
+            async with self.session.get(self.base_url, params=data) as response:
                 log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
                 html = await response.text()
-        except Exception as e:
-            log.error(f"ACS Spider Error: {e}")
+        except Exception:
+            log.exception("ACS Spider Error")
             for index in range(page * 100, min((page + 1) * 100, num)):
                 self.result_queue.put((index, ["Error"] * 6))
         else:
             bs = BeautifulSoup(html, "lxml")
-            contents = iter(bs.find_all(class_ = "issue-item_metadata"))
+            contents = iter(bs.find_all(class_="issue-item_metadata"))
             for index in range(page * 100, min((page + 1) * 100, num)):
                 try:
-                    content = (next(contents))
+                    content = next(contents)
                 except StopIteration:
                     self.result_queue.put((index, [""] * 6))
                     continue
                 # Find titles、doi、web_url
-                title_tag = content.find("h2", class_ = "issue-item_title")
+                title_tag = content.find("h2", class_="issue-item_title")
                 title = title_tag.text if title_tag else "No title"
-                doi = title_tag.a["href"].lstrip("/doi/") if title_tag else "No DOI"
+                doi = title_tag.a["href"].removesuffix("/doi/") if title_tag else "No DOI"
                 web = "https://pubs.acs.org" + title_tag.a["href"] if title_tag else "No URL"
                 # Find authors list
-                authors = tag.text \
-                        if (tag := content.ul) \
-                        else "No Authors"
+                authors = tag.text if (tag := content.ul) else "No Authors"
                 # Find publish date
-                date = tag.text \
-                    if (tag := content.find(class_ = "pub-date-value")) \
+                date = (
+                    tag.text
+                    if (tag := content.find(class_="pub-date-value"))
                     else "No Publication Date"
+                )
                 # Find abstracts
-                abstract = tag.text \
-                        if (tag := content.find("span", class_ = "hlFld-Abstract")) \
-                        else "No Abstract"
+                abstract = (
+                    tag.text
+                    if (tag := content.find("span", class_="hlFld-Abstract"))
+                    else "No Abstract"
+                )
 
                 # find publications
                 # Chapter and article have different format
-                if content.parent.find(class_ = "infoType").string == "Chapter":
-                    publication = re.sub(r"\s+", " ", content.find(class_ ="issue-item_chapter").text)
+                if content.parent.find(class_="infoType").string == "Chapter":
+                    publication = re.sub(
+                        r"\s+", " ", content.find(class_="issue-item_chapter").text
+                    )
                 else:
-                    publication = tag.text \
-                                if (tag := content.find(class_ = "issue-item_jour-name")) \
-                                else "No Publication"
+                    publication = (
+                        tag.text
+                        if (tag := content.find(class_="issue-item_jour-name"))
+                        else "No Publication"
+                    )
                 # Save data to result queue
-                self.result_queue.put((index,
-                                    (title, authors, date, publication, abstract, doi, web)))
+                self.result_queue.put(
+                    (index, (title, authors, date, publication, abstract, doi, web))
+                )
 
     @AsyncFunc
-    async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
-        self.result_queue = result_queue
+    async def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
+        self.result_queue = queue
         num = max(1, num)
         self.data["pageSize"] = 100
 
@@ -142,15 +153,16 @@ class Spider(_Spider):
 
 
 if __name__ == "__main__":
-    acs = Spider(keyword = "human",
-                start_year = "2010",
-                end_year = "2020",
-                author = "Martin",
-                journal = "nature",
-                sorting = "日期逆序"
-                )
+    acs = Spider(
+        keyword="human",
+        start_year="2010",
+        end_year="2020",
+        author="Martin",
+        journal="nature",
+        sorting="日期逆序",
+    )
     print(acs.getTotalPaperNum())
     q = PriorityQueue(4)
     acs.getAllPapers(q, 4)
-    for i in range(4):
+    for _ in range(4):
         print(q.get())

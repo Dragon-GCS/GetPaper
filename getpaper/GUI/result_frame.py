@@ -53,4 +53,4 @@ class ResultFrame(Frame):
         detail = self.tree.item(self.tree.selection()[0], "values")
         sci_url = self.master.children["!mainframe"].scihub_url.get()  # type: ignore
         downloader = SciHubDownloader(sci_url)
-        DetailWindow(detail, downloader)
+        DetailWindow(list(detail), downloader)

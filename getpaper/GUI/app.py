@@ -9,23 +9,24 @@ from getpaper.GUI.result_frame import ResultFrame
 
 log = logging.getLogger("GetPaper")
 
+
 class Application:
     def __init__(self, theme: str) -> None:
         self.master = ttk.Window(title=APP_NAME, themename=theme)
-        self.master.minsize(960, 600)               # Minimum window size
-        self.master.geometry("1080x720")            # Default window size
-        self.master.option_add("*Font", FONT)       # Set font
+        self.master.minsize(960, 600)  # Minimum window size
+        self.master.geometry("1080x720")  # Default window size
+        self.master.option_add("*Font", FONT)  # Set font
         # Column 1st (main_frame & result_frame)changes with main window's weight
-        self.master.columnconfigure(0, weight = 1)
+        self.master.columnconfigure(0, weight=1)
         # Row 2nd (result_frame) changes with main window's height
-        self.master.rowconfigure(1, weight = 1)
+        self.master.rowconfigure(1, weight=1)
 
-        self.result_frame = ResultFrame(self.master, relief = FRAME_STYLE["relief"])
+        self.result_frame = ResultFrame(self.master, relief=FRAME_STYLE["relief"])
         self.main_frame = MainFrame(self.master, self.result_frame, **FRAME_STYLE)
 
         style = ttk.Style()
-        style.configure("TButton", font = FONT)
-        style.configure("Treeview", font = ("times", 12))
+        style.configure("TButton", font=FONT)
+        style.configure("Treeview", font=("times", 12))
 
         menu = MenuBar(self)
         self.master["menu"] = menu

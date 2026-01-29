@@ -54,7 +54,7 @@ class MenuBar(ttk.Menu):
             try:
                 with filename.open("w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
-                    writer.writerow([s.strip(":\n") for s in RESULT_LIST_EN])
+                    writer.writerow([s.strip(":\n\t") for s in RESULT_LIST_EN])
                     writer.writerows(self.main_frame.result)
                 self.tip.setTip("保存成功")
             except Exception:
