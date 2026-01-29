@@ -18,8 +18,8 @@
 运行环境：>=python3.11
 
 * 克隆本项目后cd至项目目录
-* 使用`pip install -r requirements.txt`
-* `python main.pyw` 运行项目
+* 使用`uv sync`安装依赖
+* `uv run main.pyw` 运行项目
 * 如需打包，运行`pyinstaller main.spec`，`main.spec`已配置好相关静态文件。
 
 > 翻译功能需要自行注册百度翻译Api后将个人`appid`与`key`添加到`api_info.json`中。exe可直接使用翻译。
