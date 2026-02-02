@@ -26,7 +26,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller main.spec
+          uv run pyinstaller main.spec
 
       - name: Verify build
         run: |
