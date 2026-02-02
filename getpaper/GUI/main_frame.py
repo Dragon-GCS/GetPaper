@@ -1,35 +1,28 @@
+import asyncio
 import logging
-import time
+from contextlib import suppress
 from queue import PriorityQueue, Queue
+from tkinter import Event
+from typing import ClassVar
 
 import ttkbootstrap as ttk
-from ttkbootstrap import Button, Combobox, Entry, Frame, Label, Progressbar, Spinbox, constants
+from ttkbootstrap import Button, Combobox, Entry, Frame, Label, Spinbox, constants
 
-from getpaper.config import DEFAULT_SCI_HUB_URL, SORTED_BY, TIMEOUT, TIP_REFRESH, spider_list
-from getpaper.spiders._spider import _Spider
-from getpaper.utils import MyThread, TipException, getQueueData, setSpider, startThread
+from getpaper.config import DEFAULT_SCI_HUB_URL, SORTED_BY, TIP_REFRESH, spider_list
+from getpaper.GUI.result_frame import ResultFrame
+from getpaper.GUI.tip_frame import TipFrame
+from getpaper.spiders._spider import PaperDetail, _Spider
+from getpaper.utils import getSpider, startTask
 
 log = logging.getLogger("GetPaper")
 
 
-class TipFrame(Frame):
-    def __init__(self, master: ttk.Frame) -> None:
-        super().__init__(master)
-        self.columnconfigure(1, weight=1)
-        self.label = Label(self, text="进度", width=16, anchor="e")
-        self.label.grid(row=0, column=0, sticky=constants.E)
-        self.bar = Progressbar(self, style="info.Striped.Horizontal.TProgressbar")
-        self.bar.grid(row=0, column=1, sticky=constants.EW)
-
-    def setTip(self, text: str) -> None:
-        self.label["text"] = text
-
-
 class MainFrame(Frame):
     spider: _Spider
-    result: list[list[str]]
+    result: ClassVar[list[PaperDetail]] = []
+    total_num: int
 
-    def __init__(self, master: ttk.Window, result_frame: ttk.Frame, **kwargs):
+    def __init__(self, master: ttk.Window, result_frame: ResultFrame, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row=0, sticky=constants.EW)
         self.result_frame = result_frame
@@ -53,8 +46,9 @@ class MainFrame(Frame):
         # Choose a database to search
         self.engine = Combobox(self.row_1, values=spider_list, state="readonly")
         # Bind a function which can remove the ugly background after select
-        self.engine.bind("<<ComboboxSelected>>", lambda e: self.engine.selection_clear())
+        self.engine.bind("<<ComboboxSelected>>", self.selectSpider)
         self.engine.grid(row=0, column=1, sticky=constants.W)
+        self.engine.selection_clear()
         # Available url of Sci-Hub
         Label(self.row_1, text="如需下载文献请在此输入可用的SciHub网址：https：//").grid(
             row=0, column=20, sticky=constants.E
@@ -119,33 +113,52 @@ class MainFrame(Frame):
         self.download_button.grid(row=0, column=21)
         ####################### Row 4th end #######################
 
-    @setSpider
-    @startThread("Search")
-    def search(self) -> None:
+    def selectSpider(self, event: Event) -> None:
+        if not self.engine.get():
+            self.tip.setTip("未选择搜索引擎")
+            return
+        self.spider = getSpider(
+            name=self.engine.get(),
+            keyword=self.keyword.get(),
+            start_year=self.start_year.get(),
+            end_year=self.end_year.get(),
+            author=self.author.get(),
+            journal=self.journal.get(),
+            sorting=self.sorting.get(),
+        )
+        log.info(f"Init this spider: {self.engine.get()}")
+        self.engine.selection_clear()
+
+    @startTask("Search")
+    async def search(self) -> None:
         """Get the total number of search result"""
 
         self.search_button.state(["disabled"])
         self.tip.setTip("搜索中")
         self.tip.bar.start()
         try:
-            t = MyThread(
-                tip_set=self.tip.setTip,
-                target=self.spider.getTotalPaperNum,
-                **{"name": f"{self.engine.get()} Get_Num"},
+            self.spider.parseData(
+                keyword=self.keyword.get(),
+                start_year=self.start_year.get(),
+                end_year=self.end_year.get(),
+                author=self.author.get(),
+                journal=self.journal.get(),
+                sorting=self.sorting.get(),
             )
-            t.start()
-            t.join()
-            if t.result:
-                self.tip.setTip(t.result)
+            result = await self.spider.getTotalPaperNum()
+            self.tip.setTip(f"共找到{result}篇文献")
+            self.total_num = result
+            self.num.delete(0, "end")
+            self.num.insert(0, str(result))
         except Exception:
             log.exception("Setting spider error")
+            self.tip.setTip("搜索出错")
         finally:
             self.tip.bar.stop()
             self.search_button.state(["!disabled"])
 
-    # @setSpider
-    @startThread("FetchDetail")
-    def getDetail(self) -> None:
+    @startTask("FetchDetail")
+    async def getDetail(self) -> None:
         """
         Download paper details, include:
         Title, Authors, Date, Publication, Abstract, doi, Url
@@ -153,43 +166,33 @@ class MainFrame(Frame):
 
         self.download_button.state(["disabled"])
         self.tip.setTip("准备中...")
-        result = PriorityQueue()
-        try:
-            num = int(self.num.get())
-            if num < 1:
-                self.tip.setTip("文献数不为正整数")
-                return
-            # create a Queue to store result
-            log.info(f"Fetch num: {num}")
-            result.maxsize = num
-            # Start task on new thread
-            # tip_set function for catching TipException show on GUI
-            MyThread(
-                tip_set=self.tip.setTip,
-                target=self.spider.getAllPapers,
-                args=(result, num),
-                name=f"{self.engine.get()} Fetch",
-            ).start()
+        num = min(max(0, int(self.num.get())), self.total_num)
+        log.info(f"Fetch num: {num}")
+        result = PriorityQueue(num)
 
-            self.monitor(result, num)
+        monitor_task = asyncio.create_task(
+            self.monitor(result, num), name=f"{self.engine.get()} Fetch"
+        )
+        try:
+            await self.spider.getAllPapers(result, num)
         except Exception:
             log.exception("Get Detail Error")
-        else:
-            self.tip.setTip("获取结束")
+            self.tip.setTip("获取详情出错")
         finally:
-            size = 0
-            self.tip.bar.stop()
-            try:
-                if not result.empty():
-                    size = result.qsize()
-                    self.result = getQueueData(result)
-                    # get item from queue and send all to result frame
-                    self.result_frame.createForm(self.result)  # type: ignore
-            finally:
-                self.download_button.state(["!disabled"])
-                self.tip.setTip(f"抓取完成， 共{size}篇")
+            monitor_task.cancel()
+            self.tip.setTip("获取结束")
+            self.result.clear()
+            while not result.empty():
+                self.result.append(result.get()[1])
+            self.tip.setTip(f"抓取完成， 共{len(self.result)}篇")
 
-    def monitor(self, monitor_queue: Queue, total: int) -> None:
+        with suppress(asyncio.CancelledError):
+            await monitor_task
+        self.tip.bar.stop()
+        self.result_frame.createForm(self.result)
+        self.download_button.state(["!disabled"])
+
+    async def monitor(self, monitor_queue: Queue, total: int) -> None:
         """
         Monitor progress by the size of Queue, progress = queue.qsize / total
         Args:
@@ -198,18 +201,8 @@ class MainFrame(Frame):
         """
 
         # start progress bar
-        start = time.time()
-        size = 0
-        while True:
-            current_size = monitor_queue.qsize()
-            if current_size == size:
-                if time.time() - start > TIMEOUT:
-                    raise TipException("连接超时")
-            elif monitor_queue.full():
-                break
-            else:
-                start = time.time()
-                size = current_size
-                self.tip.setTip(f"下载中：{current_size}/{total}")
-                self.tip.bar["value"] = 100 * current_size / total
-            time.sleep(TIP_REFRESH)
+        while not monitor_queue.full():
+            size = monitor_queue.qsize()
+            self.tip.setTip(f"下载中：{size}/{total}")
+            self.tip.bar["value"] = 100 * size / total
+            await asyncio.sleep(TIP_REFRESH)

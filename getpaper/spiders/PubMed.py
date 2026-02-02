@@ -5,9 +5,10 @@ from queue import PriorityQueue
 from typing import Any, Dict, Sequence
 
 from bs4 import BeautifulSoup
+from httpx import TimeoutException
 
 from getpaper.spiders._spider import _Spider
-from getpaper.utils import AsyncFunc, TipException, getSession
+from getpaper.utils import TipException, getClient
 
 GET_FREQUENCY = 0.1  # frequency to fetch paper
 log = logging.getLogger("GetPaper")
@@ -47,23 +48,16 @@ class Spider(_Spider):
             data["sort"] = "date"
         if sorting.endswith("逆序"):
             data["sort_order"] = "asc"
+        self.data = data
         return data
 
-    @AsyncFunc
-    async def getTotalPaperNum(self):
+    async def getTotalPaperNum(self) -> int:
         self.data["format"] = "summary"
+        client = getClient()
         try:
-            async with (
-                getSession() as session,
-                session.get(self.base_url, params=self.data) as response,
-            ):
-                log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
-                html = await response.text()
-        except asyncio.exceptions.TimeoutError as e:
-            log.info("PubMed Spider Get Total Num Time Out")
-            raise TipException("连接超时") from e
-        else:
-            bs = BeautifulSoup(html, "lxml")
+            resp = await client.get(self.base_url, params=self.data)
+            log.info(f"Get URL: {resp.url}\nURL Status: {resp.status_code}")
+            bs = BeautifulSoup(resp.text, "lxml")
             if bs.find("span", class_="single-result-redirect-message"):
                 self.total_num = 1
                 if pmid := bs.find("strong", class_="current-id"):
@@ -74,7 +68,11 @@ class Spider(_Spider):
                 self.total_num = int(tag.span.text.replace(",", ""))  # type: ignore
             else:
                 self.total_num = 0
-            return f"共找到{self.total_num}篇"
+        except TimeoutException as e:
+            log.exception("PubMed Spider Get Total Num Time Out")
+            raise TipException("连接超时") from e
+
+        return self.total_num
 
     async def getPMIDs(self, num: int) -> Sequence[str]:
         """
@@ -84,19 +82,18 @@ class Spider(_Spider):
         """
         pmid_list = []
         self.data.update({"size": "200", "page": 1, "format": "pmid"})
+        client = getClient()
         # Get page by order and fetch PMIDs
         try:
             while self.data["page"] <= (num - 1) // 200 + 1:
-                async with self.session.get(self.base_url, params=self.data.copy()) as response:
-                    log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
-                    html = await response.text()
-
-                bs = BeautifulSoup(html, "lxml")
+                resp = await client.get(self.base_url, params=self.data.copy())
+                log.info(f"Get URL: {resp.url}\nURL Status: {resp.status_code}")
+                bs = BeautifulSoup(resp.text, "lxml")
                 # If no pmid was find, modify result.max_size to 1 for stop monitoring.
                 if not (tag := bs.find("pre", class_="search-results-chunk")):
                     self.result_queue.maxsize = 1
                     self.result_queue.put((0, ["Not found any papers"] * 7))
-                    raise TipException("未找到相关文献")
+                    raise TipException("未找到相关文献")  # noqa: TRY301
 
                 result = tag.text.split()
                 pmid_list.extend(result)
@@ -121,13 +118,14 @@ class Spider(_Spider):
         date = "No Date"
         web = self.base_url + pmid
 
+        client = getClient()
         # Decrease access frequency
         await asyncio.sleep(index * GET_FREQUENCY)
         log.debug(f"Fetching PMID[{pmid}]")
 
         try:
-            async with self.session.get(web) as html:
-                bs = BeautifulSoup(await html.text(), "lxml")
+            res = await client.get(web)
+            bs = BeautifulSoup(res.text, "lxml")
         except Exception:
             log.exception(f"PMID[{pmid}] Spider Error")
             title, authors, date, publication, abstract, doi = ["Error"] * 6
@@ -136,55 +134,45 @@ class Spider(_Spider):
             if not content:
                 return
 
-            if tag := content.find("h1", class_="heading-title"):  # type: ignore
+            if tag := content.find("h1", class_="heading-title"):
                 title = re.sub(r"\s{2,}", "", tag.text)
 
-            if tag := content.find("span", class_="cit"):  # type: ignore
+            if tag := content.find("span", class_="cit"):
                 date = tag.text
 
-            if tag := content.find("button", id="full-view-journal-trigger"):  # type: ignore
+            if tag := content.find("button", id="full-view-journal-trigger"):
                 publication = re.sub(r"\s+", "", tag.text)
 
-            if authors := content.find_all("span", class_="authors-list-item", limit=5):  # type: ignore
+            if authors := content.find_all("span", class_="authors-list-item", limit=5):
                 authors = "; ".join([author.a.text for author in authors if author.find("a")])
 
-            if tag := content.find(class_="abstract-content selected"):  # type: ignore
+            if tag := content.find(class_="abstract-content selected"):
                 abstract = re.sub(r"\s{2,}", "", tag.text)
 
-            if tag := content.find("a", attrs={"data-ga-action": "DOI"}):  # type: ignore
+            if tag := content.find("a", attrs={"data-ga-action": "DOI"}):
                 doi = re.sub(r"\s+", "", tag.text)
 
-            if link := content.find(class_="full-text-links-list"):  # type: ignore
+            if link := content.find(class_="full-text-links-list"):
                 web = link.a["href"]  # type: ignore
         finally:
             self.result_queue.put((index, (title, authors, date, publication, abstract, doi, web)))
 
-    @AsyncFunc
-    async def getAllPapers(self, result_queue: PriorityQueue, num: int) -> None:
-        self.result_queue = result_queue
+    async def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
+        self.result_queue = queue
         num = max(num, 1)
-
-        if getattr(self, "session", None) is None:
-            self.session = getSession()
 
         tasks = []
         if self.total_num == 1 and hasattr(self, "single_page_pmid"):
-            tasks.append(self.getPagesInfo(0, self.single_page_pmid))
+            tasks = [self.getPagesInfo(0, self.single_page_pmid)]
         else:
-            for index, pmid in enumerate(await self.getPMIDs(num)):
-                tasks.append(self.getPagesInfo(index, pmid))
+            PMIDs = await self.getPMIDs(num)
+            tasks = [self.getPagesInfo(index, pmid) for index, pmid in enumerate(PMIDs)]
 
         await asyncio.gather(*tasks)
 
-        if hasattr(self, "session"):
-            try:
-                await self.session.close()
-            finally:
-                del self.session
-
 
 if __name__ == "__main__":
-    pubmed = Spider(
+    pubMed = Spider(
         keyword="dna",
         start_year="2010",
         end_year="2020",
@@ -193,8 +181,8 @@ if __name__ == "__main__":
         sorting="相关性",
     )
 
-    print(pubmed.getTotalPaperNum())
+    print(pubMed.getTotalPaperNum())
     q = PriorityQueue(1)
-    pubmed.getAllPapers(q, 1)
+    asyncio.run(pubMed.getAllPapers(q, 1))
     for _ in range(1):
         print(q.get())

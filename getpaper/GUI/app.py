@@ -1,8 +1,9 @@
 import logging
+from threading import Thread
 
 import ttkbootstrap as ttk
 
-from getpaper.config import APP_NAME, FONT, FRAME_STYLE
+from getpaper.config import APP_NAME, FONT, FRAME_STYLE, LOOP
 from getpaper.GUI.main_frame import MainFrame
 from getpaper.GUI.menu import MenuBar
 from getpaper.GUI.result_frame import ResultFrame
@@ -33,4 +34,5 @@ class Application:
 
     def run(self) -> None:
         """Run the App"""
+        Thread(target=LOOP.run_forever, daemon=True, name="TasksThread").start()
         self.master.mainloop()

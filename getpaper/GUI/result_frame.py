@@ -1,10 +1,12 @@
-from typing import List, Tuple
+from typing import cast
 
 import ttkbootstrap as ttk
 from ttkbootstrap import Frame, Scrollbar, Treeview, constants
 
+from getpaper.config import DEFAULT_SCI_HUB_URL
 from getpaper.download import SciHubDownloader
 from getpaper.GUI.detail_window import DetailWindow
+from getpaper.spiders._spider import PaperDetail
 
 
 class ResultFrame(Frame):
@@ -31,8 +33,10 @@ class ResultFrame(Frame):
 
         # Display detail window by double click
         self.tree.bind("<Double-Button-1>", lambda e: self.showItem())
+        # default downloader
+        self.downloader = SciHubDownloader(DEFAULT_SCI_HUB_URL)
 
-    def createForm(self, data: List[Tuple[str, ...]]) -> None:
+    def createForm(self, data: list[PaperDetail]) -> None:
         """
         Display search result on the result form.
         Args:
@@ -50,7 +54,7 @@ class ResultFrame(Frame):
     def showItem(self) -> None:
         """The binding function of double click, display detail window."""
 
-        detail = self.tree.item(self.tree.selection()[0], "values")
+        detail = cast(PaperDetail, self.tree.item(self.tree.selection()[0], "values"))
         sci_url = self.master.children["!mainframe"].scihub_url.get()  # type: ignore
-        downloader = SciHubDownloader(sci_url)
-        DetailWindow(list(detail), downloader)
+        self.downloader.set_url(sci_url)
+        DetailWindow(detail, self.downloader)

@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from queue import PriorityQueue
 from typing import Any
 
-from aiohttp import ClientSession
+PaperDetail = namedtuple(
+    "PaperDetail", ["title", "authors", "date", "publication", "abstract", "doi", "web"]
+)
 
 
 class _Spider(ABC):
     base_url: str
     total_num: int
-    session: ClientSession
     result_queue: PriorityQueue
 
     def __init__(
@@ -40,7 +42,7 @@ class _Spider(ABC):
         return {}
 
     @abstractmethod
-    def getTotalPaperNum(self) -> str:
+    async def getTotalPaperNum(self) -> int:
         """Get the total number of result
 
         Returns:
@@ -49,9 +51,7 @@ class _Spider(ABC):
         pass
 
     @abstractmethod
-    def getAllPapers(
-        self, queue: PriorityQueue[tuple[int, tuple[str, str, str, str, str, str, str]]], num: int
-    ):
+    async def getAllPapers(self, queue: PriorityQueue[tuple[int, PaperDetail]], num: int):
         """Get all papers detail
 
         Args:

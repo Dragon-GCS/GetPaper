@@ -7,7 +7,7 @@ from typing import Any, Dict
 from bs4 import BeautifulSoup
 
 from getpaper.spiders._spider import _Spider
-from getpaper.utils import AsyncFunc, TipException, getSession
+from getpaper.utils import TipException, getClient
 
 GET_FREQUENCY = 0.05  # frequency to fetch paper
 log = logging.getLogger("GetPaper")
@@ -43,13 +43,12 @@ class Spider(_Spider):
 
         return data
 
-    @AsyncFunc
-    async def getTotalPaperNum(self):
+    async def getTotalPaperNum(self) -> int:
         self.data["startPage"] = 0
         self.data["pageSize"] = 20
         try:
             async with (
-                getSession() as session,
+                getClient() as session,
                 session.get(self.base_url, params=self.data) as response,
             ):
                 log.info(f"Get URL: {response.url}\nURL Status: {response.status}")
@@ -61,8 +60,8 @@ class Spider(_Spider):
             bs = BeautifulSoup(html, "lxml")
 
             if (total_num := bs.find("span", attrs={"class": "result__count"})) is None:
-                return "共找到0篇"
-            return f"共找到{total_num.string}篇"
+                return 0
+            return int(total_num.string)
 
     async def getPagesInfo(self, data: Dict[str, Any], num: int) -> None:
         """
@@ -129,14 +128,13 @@ class Spider(_Spider):
                     (index, (title, authors, date, publication, abstract, doi, web))
                 )
 
-    @AsyncFunc
     async def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
         self.result_queue = queue
         num = max(1, num)
         self.data["pageSize"] = 100
 
         if getattr(self, "session", None) is None:
-            self.session = getSession()
+            self.session = getClient()
 
         tasks = []
         for page in range((num - 1) // 100 + 1):
@@ -163,6 +161,6 @@ if __name__ == "__main__":
     )
     print(acs.getTotalPaperNum())
     q = PriorityQueue(4)
-    acs.getAllPapers(q, 4)
+    asyncio.run(acs.getAllPapers(q, 4))
     for _ in range(4):
         print(q.get())

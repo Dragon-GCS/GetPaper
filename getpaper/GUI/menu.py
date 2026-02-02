@@ -4,13 +4,13 @@ import webbrowser
 from pathlib import Path
 from queue import Queue
 from tkinter.filedialog import askdirectory, askopenfile, asksaveasfilename
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import ttkbootstrap as ttk
 
 from getpaper.config import PROJECT_URL, RESULT_LIST_EN
 from getpaper.download import SciHubDownloader
-from getpaper.utils import MyThread, startThread
+from getpaper.utils import MyThread, startTask
 
 if TYPE_CHECKING:
     from getpaper.GUI.main_frame import MainFrame
@@ -35,8 +35,8 @@ class MenuBar(ttk.Menu):
         self.add_command(label="通过DOI下载", command=self.downloadByDoiFile)
         self.add_command(label="使用说明", command=self.help)
 
-    @startThread("Save_File")
-    def saveToFile(self) -> None:
+    @startTask("Save_File")
+    async def saveToFile(self) -> None:
         """
         Save search result to csv file
         Args:
@@ -61,43 +61,42 @@ class MenuBar(ttk.Menu):
                 log.exception(f"Save {filename} failed")
                 self.tip.setTip("保存失败")
 
-    @startThread("DownloadPapers")
-    def downloadAll(self, details: List[List[str]]) -> None:
+    @startTask("DownloadPapers")
+    async def downloadAll(self, details=None) -> None:
         """
         Using SciHubDownloader to get PDFs of all results to specified directory
         Args:
             details: Contain download information. (title, *_, doi, _)
         """
-
         if not details:
-            # if no details was set, use main_frame.result
-            if not hasattr(self.main_frame, "result"):
-                # ensure searching has been done
+            if not self.main_frame.result:
                 self.tip.setTip("无搜索结果")
                 return
             details = self.main_frame.result
 
-        if target_dir := askdirectory():
-            log.info(f"Downloading all paper to directory: {Path(target_dir).absolute()}")
+        if not (target_dir := askdirectory()):
+            return
 
-            self.tip.setTip("准备下载中...")
+        log.info(f"Downloading all paper to directory: {Path(target_dir).absolute()}")
 
-            try:
-                # create a queue for monitor progress of download
-                monitor_queue = Queue(maxsize=len(details))
-                downloader = SciHubDownloader(self.main_frame.scihub_url.get())
-                MyThread(
-                    tip_set=self.tip.setTip,
-                    target=downloader.multiDownload,
-                    args=(details, monitor_queue, target_dir),
-                    name="Multi-Download",
-                ).start()
+        self.tip.setTip("准备下载中...")
+        monitor_queue = Queue(maxsize=len(details))
 
-                self.main_frame.monitor(monitor_queue, len(details))
+        try:
+            # create a queue for monitor progress of download
+            downloader = SciHubDownloader(self.main_frame.scihub_url.get())
+            MyThread(
+                tip_set=self.tip.setTip,
+                target=downloader.multiDownload,
+                args=(details, monitor_queue, target_dir),
+                name="Multi-Download",
+            ).start()
 
-            finally:
-                self.tip.setTip("下载结束")
-                self.tip.bar.stop()
+            await self.main_frame.monitor(monitor_queue, len(details))
+
+        finally:
+            self.tip.setTip("下载结束")
+            self.tip.bar.stop()
 
     def downloadByDoiFile(self) -> None:
         """

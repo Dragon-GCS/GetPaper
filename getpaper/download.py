@@ -1,16 +1,16 @@
 import asyncio
 import logging
-import os
 import re
 from pathlib import Path
 from queue import Queue
-from typing import Any, Protocol, Sequence
+from typing import Protocol
 
-import aiohttp
 from bs4 import BeautifulSoup
+from httpx import TimeoutException
 
 from getpaper.config import SCI_DELAY
-from getpaper.utils import AsyncFunc, getSession
+from getpaper.spiders._spider import PaperDetail
+from getpaper.utils import getClient
 
 log = logging.getLogger("GetPaper")
 
@@ -32,142 +32,92 @@ def checkFilename(filename: str, suffix: str = ".pdf"):
 
 
 class Downloader(Protocol):
-    def download(self, doi: str, filename: str = "") -> Any: ...
+    async def download(self, doi: str, monitor: Queue, file: Path, index: int) -> None: ...
 
-    def multiDownload(
-        self, details: Sequence[Sequence[str]], monitor: Queue, target_dir: str = ""
-    ) -> Any: ...
+    async def multiDownload(
+        self, details: list[PaperDetail], monitor: Queue, target_dir: Path
+    ) -> None: ...
 
 
 class SciHubDownloader:
-    monitor: Queue
-    session: aiohttp.ClientSession
+    url: str
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str):
+        self.set_url(url)
+
+    def set_url(self, url: str) -> None:
         if not url.startswith("https"):
             url = "https://" + url
-        self.url = url
+        self.url = url.strip("/")
 
-    async def _download(self, doi: str, filename: str, index: int = 0) -> None:
+    async def download(self, doi: str, monitor: Queue, file: Path, index: int = 0) -> None:
         """
-        From Sci-Hub download pdf by doi.
+        Download single paper from sci-hub by doi and save to filename.
+
         Args:
-            doi: the doi of paper, from search result.
-            filename: name of downloaded pdf file.
-            index: index of doi, download will be delayed by index * SCI_DELAY second.
+            doi(str): the doi of paper, from search result.
+            file(Path): full path of downloaded pdf file.
+            index(int): index of doi, download will be delayed by index * SCI_DELAY second.
         """
-
-        url = f"{self.url}/{doi}"
-        content: bytes = b""
-        flag: bool = False  # success to find pdf url or not
-        base, filename = os.path.split(filename)
-        error_name = filename
+        folder, filename = file.parent, file.stem
+        if not doi:
+            (folder / f"NotFound_{filename}.txt").write_text(f"{file.stem}\nNot found doi")
+            return
 
         log.debug(f"Downloading doi: {doi}")
         await asyncio.sleep(index * SCI_DELAY)  # add delay
 
-        if doi:
-            for _ in range(3):
-                # try 3 times for download
-                try:
-                    async with self.session.get(url) as response:
-                        bs = BeautifulSoup(await response.text(), "lxml")
-                        if pdf := bs.find(id="pdf"):
-                            async with self.session.get(pdf["src"].split("#")[0]) as result:
-                                content = await result.read()
-                                flag = True
-                        else:
-                            content = f"Sci-Hub has not yet included this paper\ndoi: {doi}".encode(
-                                "utf-8"
-                            )
-                        break
+        client = getClient()
+        url = f"{self.url}/{doi}"
+        try:
+            response = await client.get(url)
+            bs = BeautifulSoup(response.text, "lxml")
+            if pdf := bs.find(id="pdf"):
+                result = await client.get(pdf["src"].split("#")[0])
+                filename += ".pdf"
+                content = result.content
+            else:
+                filename = f"NotIncluded_{filename}.txt"
+                content = f"Sci-Hub has not yet included this paper: {doi}".encode("utf-8")
+        except TimeoutException:
+            content = f"Connect timeout\n{file}\nURL: {url}".encode("utf-8")
+            log.exception(f"Connect timeout: {url}")
+            filename = f"Timeout_{filename}.txt"
+            raise
 
-                except asyncio.exceptions.TimeoutError:
-                    content = f"Connect timeout\n{filename}\nURL: {url}".encode("utf-8")
-                    log.debug(f"Connect timeout\nURL: {url}")
+        except Exception:
+            content = f"Unknown error\n{file}\nURL: {url}".encode("utf-8")
+            log.exception(f"Unknown error: {url} ")
+            filename = f"ERROR_{filename}.txt"
+            raise
 
-                    if not error_name.startswith("Timeout_"):
-                        error_name = "Timeout_" + filename
+        (folder / filename).write_bytes(content)
+        monitor.put((file, None))
+        log.debug(f"Download finish: {file}")
 
-                except Exception:
-                    content = f"Unknown Error\n{filename}\nURL: {url}".encode("utf-8")
-                    log.exception(f"Error URL: {url} ")
-
-                    if not error_name.startswith("ERROR_"):
-                        error_name = "ERROR_" + filename
-
-        else:
-            content = f"{filename.rstrip('.pdf')}\nNot found doi".encode("utf-8")
-            error_name = "NotFound_" + error_name
-
-        if not flag:
-            # use error name to save file
-            filename = error_name.replace(".pdf", ".txt")
-
-        with Path(base, filename).open("wb") as f:  # noqa: ASYNC230
-            f.write(content)
-
-        if getattr(self, "monitor", None) is not None:
-            self.monitor.put((filename, flag))
-
-        log.debug(f"Download finish: {filename}")
-
-    @AsyncFunc
-    async def download(self, doi: str, filename: str = "") -> None:
-        """
-        Download single paper from sci-hub by doi and save to filename.
-        Args:
-            doi: the doi of paper, from search result.
-            filename: name of downloaded pdf file.
-        """
-
-        if getattr(self, "session", None) is None:
-            self.session = getSession()
-
-        await self._download(doi, filename)
-        if hasattr(self, "session"):
-            try:
-                await self.session.close()
-            finally:
-                del self.session
-
-    @AsyncFunc
     async def multiDownload(
-        self, details: Sequence[Sequence[str]], monitor: Queue, target_dir: str = ""
+        self, details: list[PaperDetail], monitor: Queue, target_dir: Path
     ) -> None:
         """
         Download multiple paper from sci-hub by doi, filename defaults to title.
+
         Args:
-            details: A sequences include all search result, title is details[0], doi is details[-2]
-            monitor：A Queue for monitoring the download progress by monitor.qsize() / monitor.max_size
-            target_dir: Directory to save all PDFs.
+            details (list[PaperDetail]): A sequences include all search result, title is details[0], doi is details[-2]
+            monitor (Queue): A Queue for monitoring the download progress by monitor.qsize() / monitor.max_size
+            target_dir (Path): Directory to save all PDFs.
         """
-        self.monitor = monitor
-
-        if getattr(self, "session", None) is None:
-            self.session = getSession()
-
-        target = Path(target_dir)
-        target.mkdir(parents=True, exist_ok=True)
-
-        task = []
-        for index, (title, *_, doi, __) in enumerate(details):
-            valid_name = checkFilename(title)
-            filename = target / valid_name
-            task.append(self._download(doi, str(filename), index=index))
-
-        await asyncio.gather(*task)
-
-        if hasattr(self, "session"):
-            try:
-                await self.session.close()
-            finally:
-                del self.session
+        target_dir.mkdir(parents=True, exist_ok=True)
+        await asyncio.gather(
+            *[
+                self.download(detail.doi, monitor, target_dir / checkFilename(detail.title), index)
+                for index, detail in enumerate(details)
+            ]
+        )
 
 
 if __name__ == "__main__":
     data = [
-        [
+        PaperDetail(
             "A hierarchical Bayesian approach for detecting global microbiome associations",
             "Authors",
             "Date",
@@ -175,8 +125,8 @@ if __name__ == "__main__":
             "Abstract",
             "10.1126/science.2470152",
             "Url",
-        ],
-        [
+        ),
+        PaperDetail(
             "Risk factors for heat-related illnesses during the Hajj mass gathering: an expert review.",
             "Authors",
             "Date",
@@ -184,8 +134,8 @@ if __name__ == "__main__":
             "Abstract",
             "10.1126/science.2470152",
             "Url",
-        ],
-        [
+        ),
+        PaperDetail(
             "COVID-19 disease in clinical setting: impact on gonadal function, transmission risk, and sperm quality "
             "in young males.",
             "Authors",
@@ -194,9 +144,12 @@ if __name__ == "__main__":
             "Abstract",
             "10.1126/science.2470152",
             "Url",
-        ],
+        ),
     ]
 
-    downloader = SciHubDownloader("sci-hub.ren")
-    downloader.download(data[0][-2], checkFilename("test"))
-    downloader.multiDownload(data, Queue(), "test")
+    async def _main():
+        downloader = SciHubDownloader("sci-hub.ren")
+        await downloader.download(data[0][-2], Queue(), Path("test"))
+        await downloader.multiDownload(data, Queue(), Path("test"))
+
+    asyncio.run(_main())

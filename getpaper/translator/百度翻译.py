@@ -7,7 +7,7 @@ from random import randint
 from typing import Any
 
 from getpaper.translator._translator import _Translator
-from getpaper.utils import AsyncFunc, TipException, getSession
+from getpaper.utils import TipException, getClient
 
 log = logging.getLogger("GetPaper")
 
@@ -57,9 +57,8 @@ class Translator(_Translator):
         self.data["q"] = query
         return self.data
 
-    @AsyncFunc
     async def translate(self, detail: str) -> str:
-        async with getSession() as session:
+        async with getClient() as session:
             while True:
                 params = self.sign_query(detail)
                 try:

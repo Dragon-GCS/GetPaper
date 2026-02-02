@@ -1,15 +1,17 @@
-import asyncio
 import logging
+from asyncio import iscoroutine, run_coroutine_threadsafe
+from concurrent.futures import Future
 from datetime import datetime
-from functools import wraps
+from functools import cache, wraps
+from http.cookiejar import CookieJar
 from importlib import import_module
 from queue import PriorityQueue
 from threading import Thread
-from typing import Any, Callable, Coroutine, Dict, List, Tuple, TypeVar
+from typing import Any, Callable, ParamSpec
 
-from aiohttp import ClientSession, CookieJar
+import httpx
 
-from getpaper.config import CLIENT_TIMEOUT, HEADER
+from getpaper.config import CLIENT_TIMEOUT, HEADER, LOOP
 from getpaper.spiders._spider import _Spider
 from getpaper.translator._translator import _Translator
 
@@ -48,45 +50,35 @@ def getNowYear() -> str:
     return str(datetime.now().year + 1)
 
 
-def getSession() -> ClientSession:
-    """Create a async Http session by aiohttp"""
-
-    return ClientSession(
-        headers=HEADER, read_timeout=CLIENT_TIMEOUT, cookie_jar=CookieJar(unsafe=True)
+@cache
+def getClient() -> httpx.AsyncClient:
+    """Create a async Http session by httpx.AsyncClient"""
+    return httpx.AsyncClient(
+        headers=HEADER, timeout=CLIENT_TIMEOUT, cookies=CookieJar(), follow_redirects=True
     )
 
 
-T = TypeVar("T")
+P = ParamSpec("P")
 
 
-def AsyncFunc(func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., T]:
-    """A decorator for running the async function as a common function"""
+def startTask[T](
+    task_name: str = "",
+):
+    """A decorator for running async function in a loop thread, name for debug"""
 
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        return asyncio.run(func(*args, **kwargs))
-
-    return wrapped
-
-
-def startThread(thread_name: str = "") -> Callable[..., Callable[..., Thread]]:
-    """A decorator for running app function in new thread, name for debug"""
-
-    def middle(
-        func: Callable[[object], Any],
-    ) -> Callable[[object], Thread]:
+    def middle(func: Callable[P, T]) -> Callable[P, Future[T]]:
         @wraps(func)
-        def wrapped(self, *args, **kwargs) -> Thread:
-            t = MyThread(
-                tip_set=self.tip.setTip,
-                target=func,
-                args=(self, *args),
-                kwargs=kwargs,
-                daemon=True,
-                name=thread_name,
-            )
-            t.start()
-            return t
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> Future[T]:
+            async def task() -> T:
+                result = func(*args, **kwargs)
+                if iscoroutine(result):
+                    return await result
+                return result
+
+            async def create_task() -> T:
+                return await LOOP.create_task(task(), name=task_name)
+
+            return run_coroutine_threadsafe(create_task(), LOOP)
 
         return wrapped
 
@@ -116,7 +108,7 @@ def setSpider(func: Callable[..., Any]) -> Callable[..., None]:
     return wrapped
 
 
-def getQueueData(queue: PriorityQueue) -> List[List[str]]:
+def getQueueData(queue: PriorityQueue) -> list[list[str]]:
     """Extract data from queue
 
     Args:
@@ -133,8 +125,8 @@ def getQueueData(queue: PriorityQueue) -> List[List[str]]:
 
 class MyThread(Thread):
     _target: Callable
-    _args: Tuple
-    _kwargs: Dict
+    _args: tuple
+    _kwargs: dict
 
     def __init__(self, tip_set: Callable[..., Any], **kwargs) -> None:
         """An thread that can catch the exception in the target and display on GUI, save returns of target.
@@ -147,7 +139,7 @@ class MyThread(Thread):
         self.result = None
 
     def run(self) -> None:
-        """Overwrite self.run() for catching the TipException and show on Tipbar"""
+        """Overwrite self.run() for catching the TipException and show on TipBar"""
 
         try:
             self.result = self._target(*self._args, **self._kwargs) if self._target else None

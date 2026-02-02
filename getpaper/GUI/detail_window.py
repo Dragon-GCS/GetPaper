@@ -1,20 +1,24 @@
 import logging
 import tkinter as tk
+from pathlib import Path
+from queue import Queue
 from tkinter.filedialog import asksaveasfilename
+from typing import Literal
 
 from ttkbootstrap import Button, Combobox, Frame, Scrollbar
 
 from getpaper.config import FONT, FRAME_STYLE, RESULT_LIST_CN, RESULT_LIST_EN, translator_list
 from getpaper.download import Downloader
-from getpaper.GUI.main_frame import TipFrame
-from getpaper.utils import getTranslator, startThread
+from getpaper.GUI.tip_frame import TipFrame
+from getpaper.spiders._spider import PaperDetail
+from getpaper.utils import getTranslator, startTask
 
 log = logging.getLogger("GetPaper")
 
 
 class TextFrame(Frame):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, master: tk.Widget, language: Literal["zh", "en"]) -> None:
+        super().__init__(master)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
         # Result display frame
@@ -24,42 +28,29 @@ class TextFrame(Frame):
         vbar = Scrollbar(self, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=vbar.set)
         vbar.grid(row=0, column=1, sticky=tk.NS)
+        self.headers = RESULT_LIST_EN if language == "en" else RESULT_LIST_CN
 
-    def enShow(self, detail: list[str]) -> None:
-        """
-        Show the information of paper with origin language on en_text_frame
-        Args:
-            detail: Paper's origin information, from search result
-        """
-
-        self._show(detail, RESULT_LIST_EN)
-
-    def cnShow(self, detail: list[str]) -> None:
-        """
-        Show the information of paper with Chinese on cn_text_frame
-        Args:
-            detail: Paper's information that title and abstract were translated.
-        """
-
-        self._show(detail, RESULT_LIST_CN)
-
-    def _show(self, contents: list[str], headers: list[str]) -> None:
+    def show(self, contents: PaperDetail | str) -> None:
         """
         Print the detail and corresponding header on the text frame
+
         Args:
-            detail: Paper's detail information
-                    Include title, authors, date, publication, abstract, doi, web_url.
-            header: Headers corresponding to the detail
+            detail (PaperDetail): Paper's detail information.
         """
 
         # https://tkdocs.com/shipman/text-index.html
         self.text.delete("1.0", "insert")
-        for header, content in zip(headers, contents, strict=True):
-            self.text.insert("insert", header + content + "\n\n")
+        if isinstance(contents, str):
+            self.text.insert("insert", contents)
+        else:
+            for header, content in zip(self.headers, contents, strict=True):
+                self.text.insert("insert", header + content + "\n\n")
 
 
 class DetailWindow(tk.Toplevel):
-    def __init__(self, detail: list[str], downloader: Downloader):
+    tip: TipFrame
+
+    def __init__(self, detail: PaperDetail, downloader: Downloader):
         super().__init__()
         self.title = "文章详情"
         self.option_add("*Font", FONT)
@@ -96,17 +87,21 @@ class DetailWindow(tk.Toplevel):
         self.detail_frame.rowconfigure(0, weight=1)
         self.detail_frame.grid(row=1, sticky=tk.NSEW)
         # Origin language detail
-        self.en_text = TextFrame(self.detail_frame)
+        self.en_text = TextFrame(self.detail_frame, "en")
         self.en_text.text.config(font=("Times", 14))  # Set English font
         self.en_text.grid(row=0, column=0, sticky=tk.NSEW)
-        self.en_text.enShow(self.detail)
+        self.en_text.show(self.detail)
         # Perform the translation result
-        self.ch_text = TextFrame(self.detail_frame)
+        self.ch_text = TextFrame(self.detail_frame, "zh")
         self.ch_text.grid(row=0, column=1, sticky=tk.NSEW)
+
+    def setTip(self, text: str) -> None:
+        self.tip.setTip(text)
 
     def chooseTranslator(self, event=None):
         """
         Choose a translator by ComboBox
+
         Args:
             event: Placeholder
         """
@@ -115,8 +110,8 @@ class DetailWindow(tk.Toplevel):
         self.choose.selection_clear()
         log.info(f"choose translator: {self.choose.get()}")
 
-    @startThread("Download_Paper")
-    def download(self) -> None:
+    @startTask("Download_Paper")
+    async def download(self) -> None:
         """Download this paper"""
 
         filename = asksaveasfilename(
@@ -130,7 +125,7 @@ class DetailWindow(tk.Toplevel):
         self.tip.grid(row=0, column=5, columnspan=3, sticky=tk.EW)
         self.tip.setTip("下载中...")
         try:
-            self.downloader.download(self.detail[5], filename)
+            await self.downloader.download(self.detail[5], Queue(), Path(filename), 0)
             self.tip.bar.stop()
         except Exception:
             log.exception("Download Paper Error")
@@ -141,13 +136,11 @@ class DetailWindow(tk.Toplevel):
             self.tip.bar.stop()
             self.download_button.state(["!disabled"])
 
-    @startThread("Translate")
-    def translate(self) -> None:
+    @startTask("Translate")
+    async def translate(self) -> None:
         """Translate this paper's title and abstract by selected translator"""
 
-        log.info(
-            f"translate by : {self.translator.__module__}",
-        )
+        log.info(f"translate by : {self.translator.__module__}")
         self.trans_button.state(["disabled"])
         # Show TipBar
         self.tip.grid(row=0, column=5, columnspan=3, sticky=tk.EW)
@@ -157,9 +150,9 @@ class DetailWindow(tk.Toplevel):
             zh_detail = list(self.detail)  # change tuple to list
             zh_detail[0] = self.translator.translate(self.detail[0])
             zh_detail[4] = self.translator.translate(self.detail[4])
-            self.ch_text.cnShow(zh_detail)
+            self.ch_text.show(PaperDetail(*zh_detail))
         except Exception as e:
-            self.ch_text.cnShow([str(e)])
+            self.ch_text.show(str(e))
         finally:
             self.tip.bar.stop()
             # Close TipBar
