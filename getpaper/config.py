@@ -22,7 +22,6 @@ spider_list.remove("ACS")
 
 
 CLIENT_TIMEOUT = 10  # Global AsyncClient timeout
-TIMEOUT = 15  # Tip timeout
 TIP_REFRESH = 0.2  # MainFrame's tip bar refresh frequency
 SCI_DELAY = 0.1  # add delay avoid putting too much pressure on the Sci_Hub server
 
@@ -40,4 +39,4 @@ RESULT_LIST_CN = ["标题:\n", "作者:\n", "日期:\t", "期刊:\t", "摘要:\n
 
 LOOP = asyncio.get_event_loop()
 
-PROJECT_URL = "https://gitee.com/Dragon-GCS/GetPaper"
+PROJECT_URL = "https://github.com/Dragon-GCS/GetPaper"

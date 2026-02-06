@@ -132,6 +132,9 @@ class MainFrame(Frame):
     @startTask("Search")
     async def search(self) -> None:
         """Get the total number of search result"""
+        if not hasattr(self, "spider"):
+            self.tip.setTip("未选择搜索引擎")
+            return
 
         self.search_button.state(["disabled"])
         self.tip.setTip("搜索中")
