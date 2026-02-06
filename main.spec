@@ -13,11 +13,6 @@ block_cipher = None
 
 # Build data files list dynamically
 datas = []
-if ttkbootstrap_path:
-    datas.extend([
-        (os.path.join(ttkbootstrap_path, "Symbola.ttf"), "ttkbootstrap"),  # Theme字体
-        (os.path.join(ttkbootstrap_path, "themes.json"), "ttkbootstrap"),  # Theme文件
-    ])
 datas.append(("getpaper/translator/_api_info.json", "getpaper/translator"))  # 翻译api数据
 
 a = Analysis(['main.pyw'],

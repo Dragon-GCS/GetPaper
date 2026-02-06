@@ -5,7 +5,7 @@ from queue import PriorityQueue
 from typing import Any, Dict, Sequence
 
 from bs4 import BeautifulSoup
-from httpx import TimeoutException
+from curl_cffi.requests.exceptions import Timeout
 
 from getpaper.spiders._spider import _Spider
 from getpaper.utils import TipException, getClient
@@ -68,7 +68,7 @@ class Spider(_Spider):
                 self.total_num = int(tag.span.text.replace(",", ""))  # type: ignore
             else:
                 self.total_num = 0
-        except TimeoutException as e:
+        except Timeout as e:
             log.exception("PubMed Spider Get Total Num Time Out")
             raise TipException("连接超时") from e
 
@@ -144,7 +144,7 @@ class Spider(_Spider):
                 publication = re.sub(r"\s+", "", tag.text)
 
             if authors := content.find_all("span", class_="authors-list-item", limit=5):
-                authors = "; ".join([author.a.text for author in authors if author.find("a")])
+                authors = "; ".join([a.text for author in authors if (a := author.find("a"))])
 
             if tag := content.find(class_="abstract-content selected"):
                 abstract = re.sub(r"\s{2,}", "", tag.text)

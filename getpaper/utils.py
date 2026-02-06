@@ -3,15 +3,14 @@ from asyncio import iscoroutine, run_coroutine_threadsafe
 from concurrent.futures import Future
 from datetime import datetime
 from functools import cache, wraps
-from http.cookiejar import CookieJar
 from importlib import import_module
 from queue import PriorityQueue
 from threading import Thread
 from typing import Any, Callable, ParamSpec
 
-import httpx
+from curl_cffi.requests import AsyncSession
 
-from getpaper.config import CLIENT_TIMEOUT, HEADER, LOOP
+from getpaper.config import CLIENT_TIMEOUT, LOOP
 from getpaper.spiders._spider import _Spider
 from getpaper.translator._translator import _Translator
 
@@ -51,11 +50,9 @@ def getNowYear() -> str:
 
 
 @cache
-def getClient() -> httpx.AsyncClient:
-    """Create a async Http session by httpx.AsyncClient"""
-    return httpx.AsyncClient(
-        headers=HEADER, timeout=CLIENT_TIMEOUT, cookies=CookieJar(), follow_redirects=True
-    )
+def getClient() -> AsyncSession:
+    """Create a async Http session by curl_cffi AsyncSession"""
+    return AsyncSession(impersonate="chrome", timeout=CLIENT_TIMEOUT)
 
 
 P = ParamSpec("P")

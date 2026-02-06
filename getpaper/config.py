@@ -20,9 +20,6 @@ else:
 
 spider_list.remove("ACS")
 
-HEADER = {
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36"
-}
 
 CLIENT_TIMEOUT = 10  # Global AsyncClient timeout
 TIMEOUT = 15  # Tip timeout

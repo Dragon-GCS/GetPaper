@@ -6,7 +6,7 @@ from queue import Queue
 from typing import Protocol
 
 from bs4 import BeautifulSoup
-from httpx import TimeoutException
+from curl_cffi.requests.exceptions import Timeout
 
 from getpaper.config import SCI_DELAY
 from getpaper.spiders._spider import PaperDetail
@@ -79,7 +79,8 @@ class SciHubDownloader:
             else:
                 filename = f"NotIncluded_{filename}.txt"
                 content = f"Sci-Hub has not yet included this paper: {doi}".encode("utf-8")
-        except TimeoutException:
+                monitor.put((file, "未找到PDF链接"))
+        except Timeout:
             content = f"Connect timeout\n{file}\nURL: {url}".encode("utf-8")
             log.exception(f"Connect timeout: {url}")
             filename = f"Timeout_{filename}.txt"
