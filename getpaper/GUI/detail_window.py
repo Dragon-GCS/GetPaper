@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import tkinter as tk
 from pathlib import Path
@@ -124,17 +125,15 @@ class DetailWindow(tk.Toplevel):
         self.download_button.state(["disabled"])
         self.tip.grid(row=0, column=5, columnspan=3, sticky=tk.EW)
         self.tip.setTip("下载中...")
-        try:
-            await self.downloader.download(self.detail[5], Queue(), Path(filename), 0)
-            self.tip.bar.stop()
-        except Exception:
-            log.exception("Download Paper Error")
-            self.tip.setTip("未知错误")
-        else:
-            self.tip.setTip("下载完成")
-        finally:
-            self.tip.bar.stop()
-            self.download_button.state(["!disabled"])
+        monitor = Queue()
+        task = asyncio.create_task(
+            self.downloader.download(self.detail[5], monitor, Path(filename), 0)
+        )
+        _filenam, status = monitor.get()
+        self.tip.setTip(status if status else "下载完成")
+        await task
+        self.tip.bar.stop()
+        self.download_button.state(["!disabled"])
 
     @startTask("Translate")
     async def translate(self) -> None:
@@ -148,8 +147,8 @@ class DetailWindow(tk.Toplevel):
         self.tip.bar.start()
         try:
             zh_detail = list(self.detail)  # change tuple to list
-            zh_detail[0] = self.translator.translate(self.detail[0])
-            zh_detail[4] = self.translator.translate(self.detail[4])
+            zh_detail[0] = await self.translator.translate(self.detail[0])
+            zh_detail[4] = await self.translator.translate(self.detail[4])
             self.ch_text.show(PaperDetail(*zh_detail))
         except Exception as e:
             self.ch_text.show(str(e))

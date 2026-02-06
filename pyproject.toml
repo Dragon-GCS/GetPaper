@@ -1,6 +1,6 @@
 [project]
 name = "get_paper"
-version = "2.1"
+version = "2.4"
 description = "文献下载器（NCBI）"
 readme = "README.md"
 requires-python = ">=3.12"

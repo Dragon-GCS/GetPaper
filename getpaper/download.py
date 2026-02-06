@@ -73,9 +73,10 @@ class SciHubDownloader:
             response = await client.get(url)
             bs = BeautifulSoup(response.text, "lxml")
             if pdf := bs.find(id="pdf"):
-                result = await client.get(pdf["src"].split("#")[0])
+                result = await client.get(pdf["src"].split("#")[0])  # type: ignore
                 filename += ".pdf"
                 content = result.content
+                monitor.put((file, "下载完成"))
             else:
                 filename = f"NotIncluded_{filename}.txt"
                 content = f"Sci-Hub has not yet included this paper: {doi}".encode("utf-8")
@@ -84,16 +85,15 @@ class SciHubDownloader:
             content = f"Connect timeout\n{file}\nURL: {url}".encode("utf-8")
             log.exception(f"Connect timeout: {url}")
             filename = f"Timeout_{filename}.txt"
-            raise
+            monitor.put((file, "连接超时"))
 
         except Exception:
             content = f"Unknown error\n{file}\nURL: {url}".encode("utf-8")
             log.exception(f"Unknown error: {url} ")
             filename = f"ERROR_{filename}.txt"
-            raise
+            monitor.put((file, "未知错误"))
 
         (folder / filename).write_bytes(content)
-        monitor.put((file, None))
         log.debug(f"Download finish: {file}")
 
     async def multiDownload(
