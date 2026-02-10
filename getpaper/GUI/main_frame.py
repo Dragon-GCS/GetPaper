@@ -173,9 +173,7 @@ class MainFrame(Frame):
         log.info(f"Fetch num: {num}")
         result = PriorityQueue(num)
 
-        monitor_task = asyncio.create_task(
-            self.monitor(result, num), name=f"{self.engine.get()} Fetch"
-        )
+        monitor_task = asyncio.create_task(self.monitor(result), name=f"{self.engine.get()} Fetch")
         try:
             await self.spider.getAllPapers(result, num)
         except Exception:
@@ -195,14 +193,15 @@ class MainFrame(Frame):
         self.result_frame.createForm(self.result)
         self.download_button.state(["!disabled"])
 
-    async def monitor(self, monitor_queue: Queue, total: int) -> None:
+    async def monitor(self, monitor_queue: Queue) -> None:
         """
         Monitor progress by the size of Queue, progress = queue.qsize / total
+
         Args:
             monitor_queue: Queue to monitor.
-            total: the max size of the Queue
         """
 
+        total = monitor_queue.maxsize
         # start progress bar
         while not monitor_queue.full():
             size = monitor_queue.qsize()

@@ -7,7 +7,7 @@ from typing import Any, Dict, Sequence
 from bs4 import BeautifulSoup
 from curl_cffi.requests.exceptions import Timeout
 
-from getpaper.spiders._spider import _Spider
+from getpaper.spiders._spider import PaperDetail, _Spider
 from getpaper.utils import TipException, getClient
 
 GET_FREQUENCY = 0.1  # frequency to fetch paper
@@ -92,7 +92,7 @@ class Spider(_Spider):
                 # If no pmid was find, modify result.max_size to 1 for stop monitoring.
                 if not (tag := bs.find("pre", class_="search-results-chunk")):
                     self.result_queue.maxsize = 1
-                    self.result_queue.put((0, ["Not found any papers"] * 7))
+                    self.result_queue.put((0, PaperDetail(*["Not found any papers"] * 7)))
                     raise TipException("未找到相关文献")  # noqa: TRY301
 
                 result = tag.text.split()
@@ -155,7 +155,9 @@ class Spider(_Spider):
             if link := content.find(class_="full-text-links-list"):
                 web = link.a["href"]  # type: ignore
         finally:
-            self.result_queue.put((index, (title, authors, date, publication, abstract, doi, web)))
+            self.result_queue.put(
+                (index, PaperDetail(title, authors, date, publication, abstract, doi, web))
+            )
 
     async def getAllPapers(self, queue: PriorityQueue, num: int) -> None:
         self.result_queue = queue

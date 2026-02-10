@@ -5,13 +5,14 @@ import webbrowser
 from pathlib import Path
 from queue import Queue
 from tkinter.filedialog import askdirectory, askopenfile, asksaveasfilename
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import anyio
 import ttkbootstrap as ttk
 
 from getpaper.config import PROJECT_URL, RESULT_LIST_EN
 from getpaper.download import SciHubDownloader
+from getpaper.spiders._spider import PaperDetail
 from getpaper.utils import startTask
 
 if TYPE_CHECKING:
@@ -32,10 +33,15 @@ class MenuBar(ttk.Menu):
         # for calling main_frame's function
         self.main_frame: MainFrame = app.main_frame
         self.tip = self.main_frame.tip
-        self.add_command(label="数据导出", command=self.saveToFile)
-        self.add_command(label="全部下载", command=self.downloadAll)
-        self.add_command(label="通过DOI下载", command=self.downloadByDoiFile)
-        self.add_command(label="使用说明", command=self.help)
+
+        # 创建主菜单
+        main_menu = ttk.Menu(self, tearoff=0)
+        main_menu.add_command(label="数据导出", command=self.saveToFile)
+        main_menu.add_command(label="全部下载", command=self.downloadAll)
+        main_menu.add_command(label="通过DOI下载", command=self.downloadByDoiFile)
+        main_menu.add_separator()
+        main_menu.add_command(label="使用说明", command=self.help)
+        self.add_cascade(label="工具", menu=main_menu)
 
     @startTask("Save_File")
     async def saveToFile(self) -> None:
@@ -64,7 +70,7 @@ class MenuBar(ttk.Menu):
         self.tip.setTip("保存成功")
 
     @startTask("DownloadPapers")
-    async def downloadAll(self, details=None) -> None:
+    async def downloadAll(self, details: Optional[list[PaperDetail]] = None) -> None:
         """
         Using SciHubDownloader to get PDFs of all results to specified directory
         Args:
@@ -85,8 +91,7 @@ class MenuBar(ttk.Menu):
         monitor_queue = Queue(maxsize=len(details))
 
         monitor_task = asyncio.create_task(
-            self.main_frame.monitor(monitor_queue, len(details)),
-            name="SciHub Monitor",
+            self.main_frame.monitor(monitor_queue), name="SciHub Monitor"
         )
         downloader = SciHubDownloader(self.main_frame.scihub_url.get())
         await downloader.multiDownload(details, monitor_queue, Path(target_dir))
@@ -114,7 +119,17 @@ class MenuBar(ttk.Menu):
                     # all valid doi start with "10."
                     continue
                 # create a detail list, detail[0] = title(as filename), detail[-2] = doi
-                details.append([doi.strip(), None, doi.strip(), None])
+                details.append(
+                    PaperDetail(
+                        title=doi.strip(),
+                        authors=None,
+                        date=None,
+                        publication=None,
+                        abstract=None,
+                        doi=doi.strip(),
+                        web=None,
+                    )
+                )
 
             log.info(f"Number of loaded doi: {len(details)}")
             self.downloadAll(details)

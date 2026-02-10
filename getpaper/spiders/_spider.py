@@ -11,7 +11,7 @@ PaperDetail = namedtuple(
 class _Spider(ABC):
     base_url: str
     total_num: int
-    result_queue: PriorityQueue
+    result_queue: PriorityQueue[tuple[int, PaperDetail]]
 
     def __init__(
         self,
