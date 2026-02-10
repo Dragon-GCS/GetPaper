@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import logging
 import webbrowser
@@ -6,11 +7,12 @@ from queue import Queue
 from tkinter.filedialog import askdirectory, askopenfile, asksaveasfilename
 from typing import TYPE_CHECKING
 
+import anyio
 import ttkbootstrap as ttk
 
 from getpaper.config import PROJECT_URL, RESULT_LIST_EN
 from getpaper.download import SciHubDownloader
-from getpaper.utils import MyThread, startTask
+from getpaper.utils import startTask
 
 if TYPE_CHECKING:
     from getpaper.GUI.main_frame import MainFrame
@@ -48,18 +50,18 @@ class MenuBar(ttk.Menu):
             self.tip.setTip("无搜索结果")
             return
 
-        if filename := asksaveasfilename(defaultextension=".csv", filetypes=[("csv", ".csv")]):
-            filename = Path(filename)
-            log.info(f"Save file to file: {filename}")
-            try:
-                with filename.open("w", newline="", encoding="utf-8") as f:
-                    writer = csv.writer(f)
-                    writer.writerow([s.strip(":\n\t") for s in RESULT_LIST_EN])
-                    writer.writerows(self.main_frame.result)
-                self.tip.setTip("保存成功")
-            except Exception:
-                log.exception(f"Save {filename} failed")
-                self.tip.setTip("保存失败")
+        if not (
+            filename := asksaveasfilename(defaultextension=".csv", filetypes=[("csv", ".csv")])
+        ):
+            return
+
+        log.info(f"Save file to file: {filename}")
+        file = await anyio.open_file(filename, "w", encoding="utf-8", newline="")
+        async with file as f:
+            writer = csv.writer(f)
+            writer.writerow([s.strip(":\n\t") for s in RESULT_LIST_EN])
+            writer.writerows(self.main_frame.result)
+        self.tip.setTip("保存成功")
 
     @startTask("DownloadPapers")
     async def downloadAll(self, details=None) -> None:
@@ -77,26 +79,20 @@ class MenuBar(ttk.Menu):
         if not (target_dir := askdirectory()):
             return
 
-        log.info(f"Downloading all paper to directory: {Path(target_dir).absolute()}")
+        log.info(f"Downloading all paper to directory: {target_dir}")
 
         self.tip.setTip("准备下载中...")
         monitor_queue = Queue(maxsize=len(details))
 
-        try:
-            # create a queue for monitor progress of download
-            downloader = SciHubDownloader(self.main_frame.scihub_url.get())
-            MyThread(
-                tip_set=self.tip.setTip,
-                target=downloader.multiDownload,
-                args=(details, monitor_queue, target_dir),
-                name="Multi-Download",
-            ).start()
-
-            await self.main_frame.monitor(monitor_queue, len(details))
-
-        finally:
-            self.tip.setTip("下载结束")
-            self.tip.bar.stop()
+        monitor_task = asyncio.create_task(
+            self.main_frame.monitor(monitor_queue, len(details)),
+            name="SciHub Monitor",
+        )
+        downloader = SciHubDownloader(self.main_frame.scihub_url.get())
+        await downloader.multiDownload(details, monitor_queue, Path(target_dir))
+        self.tip.setTip("下载结束")
+        self.tip.bar.stop()
+        monitor_task.cancel()
 
     def downloadByDoiFile(self) -> None:
         """

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from threading import Thread
 
@@ -34,5 +35,10 @@ class Application:
 
     def run(self) -> None:
         """Run the App"""
-        Thread(target=LOOP.run_forever, daemon=True, name="TasksThread").start()
+
+        def _run_loop() -> None:
+            asyncio.set_event_loop(LOOP)
+            LOOP.run_forever()
+
+        Thread(target=_run_loop, daemon=True, name="TasksThread").start()
         self.master.mainloop()

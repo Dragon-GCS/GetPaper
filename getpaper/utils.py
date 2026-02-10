@@ -1,11 +1,9 @@
 import logging
 from asyncio import iscoroutine, run_coroutine_threadsafe
 from concurrent.futures import Future
-from datetime import datetime
 from functools import cache, wraps
 from importlib import import_module
 from queue import PriorityQueue
-from threading import Thread
 from typing import Any, Callable, ParamSpec
 
 from curl_cffi.requests import AsyncSession
@@ -74,35 +72,6 @@ def startTask[T](
         return wrapped
 
     return middle
-
-
-class MyThread(Thread):
-    _target: Callable
-    _args: tuple
-    _kwargs: dict
-
-    def __init__(self, tip_set: Callable[..., Any], **kwargs) -> None:
-        """An thread that can catch the exception in the target and display on GUI, save returns of target.
-
-        Args:
-            tip_set: A function to display tip on GUI
-        """
-        super().__init__(**kwargs)
-        self.tip_set = tip_set
-        self.result = None
-
-    def run(self) -> None:
-        """Overwrite self.run() for catching the TipException and show on TipBar"""
-
-        try:
-            self.result = self._target(*self._args, **self._kwargs) if self._target else None
-        except TipException as t:
-            self.tip_set(t.tip)
-        except Exception:
-            log.exception("Thread unknown error")
-            self.tip_set("未知错误")
-        finally:
-            del self._target, self._args, self._kwargs
 
 
 class TipException(Exception):

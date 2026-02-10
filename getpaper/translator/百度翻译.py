@@ -59,7 +59,7 @@ class Translator(_Translator):
 
     async def translate(self, detail: str) -> str:
         async with getClient() as session:
-            while True:
+            for _ in range(5):
                 params = self.sign_query(detail)
                 try:
                     response = await session.post(self.url, params=params)
@@ -72,8 +72,9 @@ class Translator(_Translator):
                 elif result.get("error_code") == "52003":
                     return "Api密钥无效"
                 else:
-                    break
-        return "\n".join([item["dst"] for item in result["trans_result"]])
+                    return "\n".join([item["dst"] for item in result["trans_result"]])
+
+        raise TipException("翻译失败")
 
 
 if __name__ == "__main__":

@@ -37,6 +37,6 @@ RESULT_LIST_EN = ["Title:\n", "Authors:\n", "Date:\t", "Publication:\t", "Abstra
 RESULT_LIST_CN = ["标题:\n", "作者:\n", "日期:\t", "期刊:\t", "摘要:\n", "doi:\t", "网址:\t"]
 # fmt: on
 
-LOOP = asyncio.get_event_loop()
+LOOP = asyncio.new_event_loop()
 
 PROJECT_URL = "https://github.com/Dragon-GCS/GetPaper"

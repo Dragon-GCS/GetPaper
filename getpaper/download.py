@@ -68,7 +68,7 @@ class SciHubDownloader:
         await asyncio.sleep(index * SCI_DELAY)  # add delay
 
         client = getClient()
-        url = f"{self.url}/{doi}"
+        url, content = f"{self.url}/{doi}", b""
         try:
             response = await client.get(url)
             bs = BeautifulSoup(response.text, "lxml")
@@ -107,13 +107,17 @@ class SciHubDownloader:
             monitor (Queue): A Queue for monitoring the download progress by monitor.qsize() / monitor.max_size
             target_dir (Path): Directory to save all PDFs.
         """
-        target_dir.mkdir(parents=True, exist_ok=True)
-        await asyncio.gather(
+        target_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
+        results = await asyncio.gather(
             *[
                 self.download(detail.doi, monitor, target_dir / checkFilename(detail.title), index)
                 for index, detail in enumerate(details)
-            ]
+            ],
+            return_exceptions=True,
         )
+        for result in results:
+            if isinstance(result, Exception):
+                log.exception("Sci-Hub download task error", exc_info=result)
 
 
 if __name__ == "__main__":

@@ -109,7 +109,7 @@ class Spider(_Spider):
             log.exception(f"PubMed Error in fetching PMIDs[{self.data['page']} / {num // 200 + 1}]")
         return pmid_list[:num]
 
-    async def getPagesInfo(self, index: int, pmid: str):
+    async def getPagesInfo(self, index: int, pmid: str) -> None:
         title = "No Title"
         authors = "No Author"
         doi = "No DOI"
@@ -168,7 +168,10 @@ class Spider(_Spider):
             PMIDs = await self.getPMIDs(num)
             tasks = [self.getPagesInfo(index, pmid) for index, pmid in enumerate(PMIDs)]
 
-        await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                log.exception("PubMed task error", exc_info=result)
 
 
 if __name__ == "__main__":
